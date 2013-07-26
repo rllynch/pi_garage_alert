@@ -41,3 +41,11 @@ sudo pip install twilio<br>
 sudo update-rc.d pi_garage_alert defaults<br>
 sudo service pi_garage_alert start<br>
 1. At this point, the Pi Garage Alert software should be running. You can view its log in /var/log/pi_garage_alert.log
+
+Other Uses
+---------------
+
+The script will work with any sensor that can act like a switch. Some alternate uses include:
+
+* Basement or washing machine leak sensors
+* Window sensors
