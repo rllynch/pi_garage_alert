@@ -3,6 +3,8 @@ Pi Garage Alert
 
 Raspberry Pi Python script to email, tweet, or send an SMS if a garage door is left open.
 
+![Screenshot of garage door SMS alert](http://www.richlynch.com/wp-content/uploads/2013/07/garage_door_sms.png)
+
 Quick Start
 ---------------
 
