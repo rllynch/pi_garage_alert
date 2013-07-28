@@ -23,10 +23,10 @@ GARAGE_DOORS = [
 #      ]
 #   },
 
-#   {
-#      'pin': 15,
-#      'name': "Garage Door 2",
-#      'alerts': [
+   {
+      'pin': 15,
+      'name': "Example Garage Door",
+      'alerts': [
 #         {
 #            'state': 'open',
 #            'time': 120,
@@ -37,8 +37,8 @@ GARAGE_DOORS = [
 #            'time': 600,
 #            'recipients': [ 'sms:+11112223333', 'email:someone@example.com', 'twitter_dm:twitter_user' ]
 #         }
-#      ]
-#   }
+      ]
+   }
 ]
 
 # All messages will be logged to stdout and this file
