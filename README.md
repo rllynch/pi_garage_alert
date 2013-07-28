@@ -3,6 +3,8 @@ Pi Garage Alert
 
 Raspberry Pi Python script to email, tweet, or send an SMS if a garage door is left open.
 
+![Screenshot of garage door SMS alert](http://www.richlynch.com/wp-content/uploads/2013/07/garage_door_sms.png)
+
 Quick Start
 ---------------
 
@@ -39,3 +41,11 @@ sudo pip install twilio<br>
 sudo update-rc.d pi_garage_alert defaults<br>
 sudo service pi_garage_alert start<br>
 1. At this point, the Pi Garage Alert software should be running. You can view its log in /var/log/pi_garage_alert.log
+
+Other Uses
+---------------
+
+The script will work with any sensor that can act like a switch. Some alternate uses include:
+
+* Basement or washing machine leak sensors
+* Window sensors
