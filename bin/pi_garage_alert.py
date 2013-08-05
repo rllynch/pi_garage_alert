@@ -1,15 +1,14 @@
 #!/usr/bin/python2.7
+""" Pi Garage Alert
 
-##############################################################################
-# Pi Garage Alert
-#
-# Author: Richard L. Lynch <rich@richlynch.com>
-#
-# Description: Emails, tweets, or sends an SMS if a garage door is left open
-# too long.
-#
-# Learn more at http://www.richlynch.com/code/pi_garage_alert
-#
+Author: Richard L. Lynch <rich@richlynch.com>
+
+Description: Emails, tweets, or sends an SMS if a garage door is left open
+too long.
+
+Learn more at http://www.richlynch.com/code/pi_garage_alert
+"""
+
 ##############################################################################
 #
 # The MIT License (MIT)
@@ -39,13 +38,12 @@ import RPi.GPIO as GPIO
 import time
 import subprocess
 import re
-import os
 import sys
 import tweepy
 import smtplib
 from email.mime.text import MIMEText
 
-from time import gmtime, strftime
+from time import strftime
 from datetime import timedelta
 from twilio.rest import TwilioRestClient
 from twilio import TwilioRestException
@@ -61,6 +59,12 @@ import pi_garage_alert_config as cfg
 twilio_client = None
 
 def twilio_send_sms(recipient, msg):
+    """Sends SMS message to specified phone number using Twilio.
+
+    Args:
+        recipient: Phone number to send SMS to.
+        msg: Message to send. Long messages will automatically be truncated.
+    """
     global twilio_client
 
     # User may not have configured twilio - don't initialize it until it's
@@ -76,12 +80,12 @@ def twilio_send_sms(recipient, msg):
     if twilio_client != None:
         status("Sending SMS to %s: %s" % (recipient, msg))
         try:
-            message = twilio_client.sms.messages.create(
+            twilio_client.sms.messages.create(
                 to = recipient, 
                 from_ = cfg.TWILIO_PHONE_NUMBER, 
                 body = truncate(msg, 140))
-        except TwilioRestException, e:
-            status("Unable to send SMS: %s" % (e))
+        except TwilioRestException, ex:
+            status("Unable to send SMS: %s" % (ex))
 
 ##############################################################################
 # Twitter support
@@ -90,6 +94,12 @@ def twilio_send_sms(recipient, msg):
 twitter_api = None
 
 def twitter_dm(user, msg):
+    """Send direct message to specified Twitter user.
+
+    Args:
+        user: User to send DM to.
+        msg: Message to send. Long messages will automatically be truncated.
+    """
     global twitter_api
 
     # User may not have configured twitter - don't initialize it until it's
@@ -113,14 +123,21 @@ def twitter_dm(user, msg):
         status("Sending twitter DM to %s: %s" % (user, msg))
         try:
             twitter_api.send_direct_message(user = user, text = truncate(msg, 140))
-        except tweepy.error.TweepError, e:
-            status("Unable to send Tweet: %s" % (e))
+        except tweepy.error.TweepError, ex:
+            status("Unable to send Tweet: %s" % (ex))
 
 ##############################################################################
 # Email support
 ##############################################################################
 
 def send_email(recipient, subject, msg):
+    """Sends an email to the specified email address.
+
+    Args:
+        recipient: Email address to send to.
+        subject: Email subject.
+        msg: Body of email to send.
+    """
     status("Sending email to %s: subject = \"%s\", message = \"%s\"" % (recipient, subject, msg))
 
     msg = MIMEText(msg)
@@ -136,8 +153,12 @@ def send_email(recipient, subject, msg):
 # Sensor support
 ##############################################################################
 
-# Returns the state of the garage door on the specified pin as a string
 def get_garage_door_state(pin):
+    """Returns the state of the garage door on the specified pin as a string
+
+    Args:
+        pin: GPIO pin number.
+    """
     if GPIO.input(pin):
         state = 'open'
     else:
@@ -145,38 +166,42 @@ def get_garage_door_state(pin):
 
     return state
 
-# Returns the uptime of the RPi as a string
 def get_uptime():
-    with open('/proc/uptime', 'r') as f:
-        uptime_seconds = int(float(f.readline().split()[0]))
+    """Returns the uptime of the RPi as a string
+    """
+    with open('/proc/uptime', 'r') as uptime_file:
+        uptime_seconds = int(float(uptime_file.readline().split()[0]))
         uptime_string = str(timedelta(seconds = uptime_seconds))
     return uptime_string
 
-# Return the GPU temperature as a Celsius float
 def get_gpu_temp():
+    """Return the GPU temperature as a Celsius float
+    """
     cmd = ['vcgencmd', 'measure_temp']
 
-    p = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-    output, errors = p.communicate()
+    measure_temp_proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    output, errors = measure_temp_proc.communicate()
 
-    gpuTemp = 'unknown'
-    gpuSearch = re.search('([0-9.]+)', output)
+    gpu_temp = 'unknown'
+    gpu_search = re.search('([0-9.]+)', output)
 
-    if gpuSearch:
-        gpuTemp = gpuSearch.group(1)
+    if gpu_search:
+        gpu_temp = gpu_search.group(1)
 
-    return float(gpuTemp)
+    return float(gpu_temp)
 
-# Return the CPU temperature as a Celsius float
 def get_cpu_temp():
-    cpuTemp = 'unknown'
-    with open("/sys/class/thermal/thermal_zone0/temp", "r") as tempFile:
-        cpuTemp = float(tempFile.read()) / 1000.0
+    """Return the CPU temperature as a Celsius float
+    """
+    cpu_temp = 'unknown'
+    with open("/sys/class/thermal/thermal_zone0/temp", "r") as temp_file:
+        cpu_temp = float(temp_file.read()) / 1000.0
 
-    return cpuTemp
+    return cpu_temp
 
-# Return string summarizing RPi status
 def rpi_status():
+    """Return string summarizing RPi status
+    """
     return ("CPU temp: %.1f, GPU temp: %.1f, Uptime: %s" % (get_gpu_temp(), get_cpu_temp(), get_uptime()))
 
 ##############################################################################
@@ -184,8 +209,12 @@ def rpi_status():
 ##############################################################################
 log_file_handle = None
 
-# Log status message to LOG_FILENAME
 def status(msg):
+    """Log status message to LOG_FILENAME.
+
+    Args:
+        msg: message to log.
+    """
     global log_file_handle
 
     line = strftime("%Y-%m-%d %H:%M:%S: ") + msg
@@ -197,10 +226,14 @@ def status(msg):
     log_file_handle.write(line + "\n")
     log_file_handle.flush()
 
-# Send subject and msg to specified recipients
-# recipients should be an array of strings of the form:
-#     type:address
 def send_alerts(recipients, subject, msg):
+    """Send subject and msg to specified recipients
+
+    Args:
+        recipients: An array of strings of the form type:address
+        subject: Subject of the alert
+        msg: Body of the alert
+    """
     for recipient in recipients:
         if recipient[:6] == 'email:':
             send_email(recipient[6:], subject, msg)
@@ -215,17 +248,24 @@ def send_alerts(recipients, subject, msg):
 # Misc support
 ##############################################################################
 
-# Truncate string to specified length
-def truncate(str, length):
-    if len(str) < (length - 3):
-        return str
+def truncate(input_str, length):
+    """Truncate string to specified length
 
-    return str[:(length - 3)] + '...'
+    Args:
+        input_str: String to truncate
+        length: Maximum length of output string
+    """
+    if len(input_str) < (length - 3):
+        return input_str
+
+    return input_str[:(length - 3)] + '...'
 
 ##############################################################################
 # Main functionality
 ##############################################################################
 def main():
+    """Main functionality
+    """
 
     # Banner
     status("==========================================================")
@@ -311,9 +351,10 @@ def main():
     # Will never actually get here unless while(1) condition changed
     GPIO.cleanup() 
 
-# Ensure GPIO.cleanup() is called on ctrl-c termination
-try:
-    main()
-except KeyboardInterrupt:
-    GPIO.cleanup()
+if __name__ == "__main__":
+    # Ensure GPIO.cleanup() is called on ctrl-c termination
+    try:
+        main()
+    except KeyboardInterrupt:
+        GPIO.cleanup()
 
