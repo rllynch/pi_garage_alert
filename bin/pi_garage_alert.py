@@ -50,7 +50,7 @@ from datetime import timedelta
 from twilio.rest import TwilioRestClient
 
 sys.path.append('/usr/local/etc')
-import pi_garage_alert_config
+import pi_garage_alert_config as cfg
 
 
 ##############################################################################
@@ -67,14 +67,17 @@ def twilio_send_sms(recipient, msg):
     if twilio_client == None:
         status("Initializing twilio")
         
-        twilio_client = TwilioRestClient(
-            pi_garage_alert_config.TWILIO_ACCOUNT, 
-            pi_garage_alert_config.TWILIO_TOKEN)
+        if cfg.TWILIO_ACCOUNT == '' or cfg.TWILIO_TOKEN == '':
+            status("Twilio account or token not specified - unable to send SMS!")
+        else:
+            twilio_client = TwilioRestClient(cfg.TWILIO_ACCOUNT, cfg.TWILIO_TOKEN)
 
-    message = twilio_client.sms.messages.create(
-        to = recipient, 
-        from_ = pi_garage_alert_config.TWILIO_PHONE_NUMBER, 
-        body = truncate(msg, 140))
+    if twilio_client != None:
+        status("Sending SMS to %s: %s" % (recipient, msg))
+        message = twilio_client.sms.messages.create(
+            to = recipient, 
+            from_ = cfg.TWILIO_PHONE_NUMBER, 
+            body = truncate(msg, 140))
 
 ##############################################################################
 # Twitter support
@@ -89,21 +92,22 @@ def twitter_dm(user, msg):
     # first used
     if twitter_api == None:
         status("Initializing twitter")
-        auth = tweepy.OAuthHandler(
-            pi_garage_alert_config.TWITTER_CONSUMER_KEY, 
-            pi_garage_alert_config.TWITTER_CONSUMER_SECRET)
 
-        auth.set_access_token(
-            pi_garage_alert_config.TWITTER_ACCESS_KEY, 
-            pi_garage_alert_config.TWITTER_ACCESS_SECRET)
+        if cfg.TWITTER_CONSUMER_KEY == '' or cfg.TWITTER_CONSUMER_SECRET == '':
+            status("Twitter consumer key/secret not specified - unable to Tweet!")
+        elif cfg.TWITTER_ACCESS_KEY == '' or cfg.TWITTER_ACCESS_SECRET == '':
+            status("Twitter access key/secret not specified - unable to Tweet!")
+        else:
+            auth = tweepy.OAuthHandler(cfg.TWITTER_CONSUMER_KEY, cfg.TWITTER_CONSUMER_SECRET)
+            auth.set_access_token(cfg.TWITTER_ACCESS_KEY, cfg.TWITTER_ACCESS_SECRET)
+            twitter_api = tweepy.API(auth)
 
-        twitter_api = tweepy.API(auth)
-
-    # Twitter doesn't like the same msg sent over and over, so add a timestamp
-    msg = strftime("%Y-%m-%d %H:%M:%S: ") + msg
-    
-    status("Sending twitter DM to %s: %s" % (user, msg))
-    twitter_api.send_direct_message(user = user, text = truncate(msg, 140))
+    if twitter_api != None:
+        # Twitter doesn't like the same msg sent over and over, so add a timestamp
+        msg = strftime("%Y-%m-%d %H:%M:%S: ") + msg
+        
+        status("Sending twitter DM to %s: %s" % (user, msg))
+        twitter_api.send_direct_message(user = user, text = truncate(msg, 140))
 
 ##############################################################################
 # Email support
@@ -115,13 +119,10 @@ def send_email(recipient, subject, msg):
     msg = MIMEText(msg)
     msg['Subject'] = subject
     msg['To'] = recipient
-    msg['From'] = pi_garage_alert_config.EMAIL_FROM
+    msg['From'] = cfg.EMAIL_FROM
 
-    mail = smtplib.SMTP(
-        pi_garage_alert_config.SMTP_SERVER, 
-        pi_garage_alert_config.SMTP_PORT)
-
-    mail.sendmail(pi_garage_alert_config.EMAIL_FROM, recipient, msg.as_string())
+    mail = smtplib.SMTP(cfg.SMTP_SERVER, cfg.SMTP_PORT)
+    mail.sendmail(cfg.EMAIL_FROM, recipient, msg.as_string())
     mail.quit()
 
 ##############################################################################
@@ -184,7 +185,7 @@ def status(msg):
     print line
 
     if log_file_handle == None:
-        log_file_handle = open(pi_garage_alert_config.LOG_FILENAME, 'a')
+        log_file_handle = open(cfg.LOG_FILENAME, 'a')
 
     log_file_handle.write(line + "\n")
     log_file_handle.flush()
@@ -228,7 +229,7 @@ def main():
     GPIO.setmode(GPIO.BOARD)
 
     # Configure the sensor pins as inputs with pull up resistors
-    for door in pi_garage_alert_config.GARAGE_DOORS:
+    for door in cfg.GARAGE_DOORS:
         status("Configuring pin %d for \"%s\"" % (door['pin'], door['name']))
         GPIO.setup(door['pin'], GPIO.IN, pull_up_down = GPIO.PUD_UP)
 
@@ -242,7 +243,7 @@ def main():
     alert_states = dict()
 
     # Read initial states
-    for door in pi_garage_alert_config.GARAGE_DOORS:
+    for door in cfg.GARAGE_DOORS:
         name = door['name']
         state = get_garage_door_state(door['pin'])
 
@@ -254,7 +255,7 @@ def main():
 
     status_report_countdown = 5
     while (1):
-        for door in pi_garage_alert_config.GARAGE_DOORS:
+        for door in cfg.GARAGE_DOORS:
             name = door['name']
             state = get_garage_door_state(door['pin'])
             time_in_state = time.time() - time_of_last_state_change[name]
