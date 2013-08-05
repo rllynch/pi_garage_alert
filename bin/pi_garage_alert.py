@@ -357,4 +357,7 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         GPIO.cleanup()
-
+    except:
+        status("Terminating due to unexpected error: %s" % sys.exc_info()[0])
+        GPIO.cleanup()
+        raise
