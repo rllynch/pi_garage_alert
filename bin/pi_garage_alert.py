@@ -48,6 +48,7 @@ from email.mime.text import MIMEText
 from time import gmtime, strftime
 from datetime import timedelta
 from twilio.rest import TwilioRestClient
+from twilio import TwilioRestException
 
 sys.path.append('/usr/local/etc')
 import pi_garage_alert_config as cfg
@@ -65,7 +66,7 @@ def twilio_send_sms(recipient, msg):
     # User may not have configured twilio - don't initialize it until it's
     # first used
     if twilio_client == None:
-        status("Initializing twilio")
+        status("Initializing Twilio")
         
         if cfg.TWILIO_ACCOUNT == '' or cfg.TWILIO_TOKEN == '':
             status("Twilio account or token not specified - unable to send SMS!")
@@ -74,10 +75,13 @@ def twilio_send_sms(recipient, msg):
 
     if twilio_client != None:
         status("Sending SMS to %s: %s" % (recipient, msg))
-        message = twilio_client.sms.messages.create(
-            to = recipient, 
-            from_ = cfg.TWILIO_PHONE_NUMBER, 
-            body = truncate(msg, 140))
+        try:
+            message = twilio_client.sms.messages.create(
+                to = recipient, 
+                from_ = cfg.TWILIO_PHONE_NUMBER, 
+                body = truncate(msg, 140))
+        except TwilioRestException, e:
+            status("Unable to send SMS: %s" % (e))
 
 ##############################################################################
 # Twitter support
@@ -91,7 +95,7 @@ def twitter_dm(user, msg):
     # User may not have configured twitter - don't initialize it until it's
     # first used
     if twitter_api == None:
-        status("Initializing twitter")
+        status("Initializing Twitter")
 
         if cfg.TWITTER_CONSUMER_KEY == '' or cfg.TWITTER_CONSUMER_SECRET == '':
             status("Twitter consumer key/secret not specified - unable to Tweet!")
@@ -107,7 +111,10 @@ def twitter_dm(user, msg):
         msg = strftime("%Y-%m-%d %H:%M:%S: ") + msg
         
         status("Sending twitter DM to %s: %s" % (user, msg))
-        twitter_api.send_direct_message(user = user, text = truncate(msg, 140))
+        try:
+            twitter_api.send_direct_message(user = user, text = truncate(msg, 140))
+        except tweepy.error.TweepError, e:
+            status("Unable to send Tweet: %s" % (e))
 
 ##############################################################################
 # Email support
