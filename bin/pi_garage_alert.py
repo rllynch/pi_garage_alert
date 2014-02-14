@@ -41,6 +41,7 @@ import re
 import sys
 import tweepy
 import smtplib
+import httplib2
 from email.mime.text import MIMEText
 
 from time import strftime
@@ -86,6 +87,10 @@ def twilio_send_sms(recipient, msg):
                 body = truncate(msg, 140))
         except TwilioRestException, ex:
             status("Unable to send SMS: %s" % (ex))
+        except httplib2.ServerNotFoundError, ex:
+            status("Unable to send SMS - internet connectivity issues: %s" % (ex))
+        except:
+            status("Exception sending SMS: %s" % sys.exc_info()[0])
 
 ##############################################################################
 # Twitter support
@@ -145,9 +150,12 @@ def send_email(recipient, subject, msg):
     msg['To'] = recipient
     msg['From'] = cfg.EMAIL_FROM
 
-    mail = smtplib.SMTP(cfg.SMTP_SERVER, cfg.SMTP_PORT)
-    mail.sendmail(cfg.EMAIL_FROM, recipient, msg.as_string())
-    mail.quit()
+    try:
+        mail = smtplib.SMTP(cfg.SMTP_SERVER, cfg.SMTP_PORT)
+        mail.sendmail(cfg.EMAIL_FROM, recipient, msg.as_string())
+        mail.quit()
+    except:
+        status("Exception sending email: %s" % sys.exc_info()[0])
 
 ##############################################################################
 # Sensor support
