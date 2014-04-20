@@ -30,12 +30,12 @@ GARAGE_DOORS = [
 #            {
 #                'state': 'open',
 #                'time': 120,
-#                'recipients': [ 'sms:+11112223333', 'email:someone@example.com', 'twitter_dm:twitter_user' ]
+#                'recipients': [ 'sms:+11112223333', 'email:someone@example.com', 'twitter_dm:twitter_user', 'tweet' ]
 #            },
 #            {
 #                'state': 'open',
 #                'time': 600,
-#                'recipients': [ 'sms:+11112223333', 'email:someone@example.com', 'twitter_dm:twitter_user' ]
+#                'recipients': [ 'sms:+11112223333', 'email:someone@example.com', 'twitter_dm:twitter_user', 'tweet' ]
 #            }
         ]
     }

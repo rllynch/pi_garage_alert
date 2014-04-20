@@ -13,7 +13,7 @@ Learn more at http://www.richlynch.com/code/pi_garage_alert
 #
 # The MIT License (MIT)
 # 
-# Copyright (c) 2013 Richard L. Lynch <rich@richlynch.com>
+# Copyright (c) 2013-2014 Richard L. Lynch <rich@richlynch.com>
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy of
 # this software and associated documentation files (the "Software"), to deal in
@@ -98,13 +98,13 @@ def twilio_send_sms(recipient, msg):
 
 twitter_api = None
 
-def twitter_dm(user, msg):
-    """Send direct message to specified Twitter user.
+def twitter_init():
+    """Initialize Twitter API object.
 
     Args:
-        user: User to send DM to.
-        msg: Message to send. Long messages will automatically be truncated.
+        None
     """
+
     global twitter_api
 
     # User may not have configured twitter - don't initialize it until it's
@@ -121,6 +121,17 @@ def twitter_dm(user, msg):
             auth.set_access_token(cfg.TWITTER_ACCESS_KEY, cfg.TWITTER_ACCESS_SECRET)
             twitter_api = tweepy.API(auth)
 
+def twitter_dm(user, msg):
+    """Send direct message to specified Twitter user.
+
+    Args:
+        user: User to send DM to.
+        msg: Message to send. Long messages will automatically be truncated.
+    """
+    global twitter_api
+
+    twitter_init()
+
     if twitter_api != None:
         # Twitter doesn't like the same msg sent over and over, so add a timestamp
         msg = strftime("%Y-%m-%d %H:%M:%S: ") + msg
@@ -130,6 +141,26 @@ def twitter_dm(user, msg):
             twitter_api.send_direct_message(user = user, text = truncate(msg, 140))
         except tweepy.error.TweepError, ex:
             status("Unable to send Tweet: %s" % (ex))
+
+def twitter_status(msg):
+    """Update the users's status
+
+    Args:
+        msg: New status to set. Long messages will automatically be truncated.
+    """
+    global twitter_api
+
+    twitter_init()
+
+    if twitter_api != None:
+        # Twitter doesn't like the same msg sent over and over, so add a timestamp
+        msg = strftime("%Y-%m-%d %H:%M:%S: ") + msg
+        
+        status("Updating Twitter status to: %s" % (msg))
+        try:
+            twitter_api.update_status(status = truncate(msg, 140))
+        except tweepy.error.TweepError, ex:
+            status("Unable to update Twitter status: %s" % (ex))
 
 ##############################################################################
 # Email support
@@ -247,6 +278,8 @@ def send_alerts(recipients, subject, msg):
             send_email(recipient[6:], subject, msg)
         elif recipient[:11] == 'twitter_dm:':
             twitter_dm(recipient[11:], msg)
+        elif recipient == 'tweet':
+            twitter_status(msg)
         elif recipient[:4] == 'sms:':
             twilio_send_sms(recipient[4:], msg)
         else:
