@@ -12,25 +12,26 @@ Learn more at http://www.richlynch.com/code/pi_garage_alert
 ##############################################################################
 #
 # The MIT License (MIT)
-# 
+#
 # Copyright (c) 2013-2014 Richard L. Lynch <rich@richlynch.com>
 #
-# Permission is hereby granted, free of charge, to any person obtaining a copy of
-# this software and associated documentation files (the "Software"), to deal in
-# the Software without restriction, including without limitation the rights to
-# use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
-# the Software, and to permit persons to whom the Software is furnished to do so,
-# subject to the following conditions:
+# Permission is hereby granted, free of charge, to any person obtaining a
+# copy of this software and associated documentation files (the "Software"),
+# to deal in the Software without restriction, including without limitation
+# the rights to use, copy, modify, merge, publish, distribute, sublicense,
+# and/or sell copies of the Software, and to permit persons to whom the
+# Software is furnished to do so, subject to the following conditions:
 #
-# The above copyright notice and this permission notice shall be included in all
-# copies or substantial portions of the Software.
+# The above copyright notice and this permission notice shall be included
+# in all copies or substantial portions of the Software.
 #
 # THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
-# FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
-# COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
-# IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
-# CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+# FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
+# DEALINGS IN THE SOFTWARE.
 #
 ##############################################################################
 
@@ -72,7 +73,7 @@ def twilio_send_sms(recipient, msg):
     # first used
     if twilio_client == None:
         status("Initializing Twilio")
-        
+
         if cfg.TWILIO_ACCOUNT == '' or cfg.TWILIO_TOKEN == '':
             status("Twilio account or token not specified - unable to send SMS!")
         else:
@@ -82,12 +83,12 @@ def twilio_send_sms(recipient, msg):
         status("Sending SMS to %s: %s" % (recipient, msg))
         try:
             twilio_client.sms.messages.create(
-                to = recipient, 
-                from_ = cfg.TWILIO_PHONE_NUMBER, 
-                body = truncate(msg, 140))
-        except TwilioRestException, ex:
+                to=recipient,
+                from_=cfg.TWILIO_PHONE_NUMBER,
+                body=truncate(msg, 140))
+        except TwilioRestException as ex:
             status("Unable to send SMS: %s" % (ex))
-        except httplib2.ServerNotFoundError, ex:
+        except httplib2.ServerNotFoundError as ex:
             status("Unable to send SMS - internet connectivity issues: %s" % (ex))
         except:
             status("Exception sending SMS: %s" % sys.exc_info()[0])
@@ -135,11 +136,11 @@ def twitter_dm(user, msg):
     if twitter_api != None:
         # Twitter doesn't like the same msg sent over and over, so add a timestamp
         msg = strftime("%Y-%m-%d %H:%M:%S: ") + msg
-        
+
         status("Sending twitter DM to %s: %s" % (user, msg))
         try:
-            twitter_api.send_direct_message(user = user, text = truncate(msg, 140))
-        except tweepy.error.TweepError, ex:
+            twitter_api.send_direct_message(user=user, text=truncate(msg, 140))
+        except tweepy.error.TweepError as ex:
             status("Unable to send Tweet: %s" % (ex))
 
 def twitter_status(msg):
@@ -155,11 +156,11 @@ def twitter_status(msg):
     if twitter_api != None:
         # Twitter doesn't like the same msg sent over and over, so add a timestamp
         msg = strftime("%Y-%m-%d %H:%M:%S: ") + msg
-        
+
         status("Updating Twitter status to: %s" % (msg))
         try:
-            twitter_api.update_status(status = truncate(msg, 140))
-        except tweepy.error.TweepError, ex:
+            twitter_api.update_status(status=truncate(msg, 140))
+        except tweepy.error.TweepError as ex:
             status("Unable to update Twitter status: %s" % (ex))
 
 ##############################################################################
@@ -210,7 +211,7 @@ def get_uptime():
     """
     with open('/proc/uptime', 'r') as uptime_file:
         uptime_seconds = int(float(uptime_file.readline().split()[0]))
-        uptime_string = str(timedelta(seconds = uptime_seconds))
+        uptime_string = str(timedelta(seconds=uptime_seconds))
     return uptime_string
 
 def get_gpu_temp():
@@ -219,7 +220,7 @@ def get_gpu_temp():
     cmd = ['vcgencmd', 'measure_temp']
 
     measure_temp_proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-    output, errors = measure_temp_proc.communicate()
+    output = measure_temp_proc.communicate()[0]
 
     gpu_temp = 'unknown'
     gpu_search = re.search('([0-9.]+)', output)
@@ -241,7 +242,7 @@ def get_cpu_temp():
 def rpi_status():
     """Return string summarizing RPi status
     """
-    return ("CPU temp: %.1f, GPU temp: %.1f, Uptime: %s" % (get_gpu_temp(), get_cpu_temp(), get_uptime()))
+    return "CPU temp: %.1f, GPU temp: %.1f, Uptime: %s" % (get_gpu_temp(), get_cpu_temp(), get_uptime())
 
 ##############################################################################
 # Logging and alerts
@@ -257,7 +258,7 @@ def status(msg):
     global log_file_handle
 
     line = strftime("%Y-%m-%d %H:%M:%S: ") + msg
-    print line
+    print(line)
 
     if log_file_handle == None:
         log_file_handle = open(cfg.LOG_FILENAME, 'a')
@@ -319,7 +320,7 @@ def main():
     # Configure the sensor pins as inputs with pull up resistors
     for door in cfg.GARAGE_DOORS:
         status("Configuring pin %d for \"%s\"" % (door['pin'], door['name']))
-        GPIO.setup(door['pin'], GPIO.IN, pull_up_down = GPIO.PUD_UP)
+        GPIO.setup(door['pin'], GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
     # Last state of each garage door
     door_states = dict()
@@ -335,14 +336,14 @@ def main():
         name = door['name']
         state = get_garage_door_state(door['pin'])
 
-        door_states[name]                = state
-        time_of_last_state_change[name]  = time.time()
-        alert_states[name]               = 0
+        door_states[name] = state
+        time_of_last_state_change[name] = time.time()
+        alert_states[name] = 0
 
         status("Initial state of \"%s\" is %s" % (name, state))
 
     status_report_countdown = 5
-    while (1):
+    while True:
         for door in cfg.GARAGE_DOORS:
             name = door['name']
             state = get_garage_door_state(door['pin'])
@@ -388,9 +389,9 @@ def main():
 
         # Poll every 1 second
         time.sleep(1)
-    
+
     # Will never actually get here unless while(1) condition changed
-    GPIO.cleanup() 
+    GPIO.cleanup()
 
 if __name__ == "__main__":
     # Ensure GPIO.cleanup() is called on ctrl-c termination
