@@ -41,6 +41,7 @@ import subprocess
 import re
 import sys
 import tweepy
+import logging
 import smtplib
 import httplib2
 from email.mime.text import MIMEText
@@ -58,136 +59,147 @@ import pi_garage_alert_config as cfg
 # Twilio support
 ##############################################################################
 
-twilio_client = None
+class Twilio(object):
+    """Class to connect to and send SMS using Twilio"""
 
-def twilio_send_sms(recipient, msg):
-    """Sends SMS message to specified phone number using Twilio.
+    def __init__(self):
+        self.twilio_client = None
+        self.logger = logging.getLogger(__name__)
 
-    Args:
-        recipient: Phone number to send SMS to.
-        msg: Message to send. Long messages will automatically be truncated.
-    """
-    global twilio_client
+    def send_sms(self, recipient, msg):
+        """Sends SMS message to specified phone number using Twilio.
 
-    # User may not have configured twilio - don't initialize it until it's
-    # first used
-    if twilio_client == None:
-        status("Initializing Twilio")
+        Args:
+            recipient: Phone number to send SMS to.
+            msg: Message to send. Long messages will automatically be truncated.
+        """
 
-        if cfg.TWILIO_ACCOUNT == '' or cfg.TWILIO_TOKEN == '':
-            status("Twilio account or token not specified - unable to send SMS!")
-        else:
-            twilio_client = TwilioRestClient(cfg.TWILIO_ACCOUNT, cfg.TWILIO_TOKEN)
+        # User may not have configured twilio - don't initialize it until it's
+        # first used
+        if self.twilio_client == None:
+            self.logger.info("Initializing Twilio")
 
-    if twilio_client != None:
-        status("Sending SMS to %s: %s" % (recipient, msg))
-        try:
-            twilio_client.sms.messages.create(
-                to=recipient,
-                from_=cfg.TWILIO_PHONE_NUMBER,
-                body=truncate(msg, 140))
-        except TwilioRestException as ex:
-            status("Unable to send SMS: %s" % (ex))
-        except httplib2.ServerNotFoundError as ex:
-            status("Unable to send SMS - internet connectivity issues: %s" % (ex))
-        except:
-            status("Exception sending SMS: %s" % sys.exc_info()[0])
+            if cfg.TWILIO_ACCOUNT == '' or cfg.TWILIO_TOKEN == '':
+                self.logger.error("Twilio account or token not specified - unable to send SMS!")
+            else:
+                self.twilio_client = TwilioRestClient(cfg.TWILIO_ACCOUNT, cfg.TWILIO_TOKEN)
+
+        if self.twilio_client != None:
+            self.logger.info("Sending SMS to %s: %s", recipient, msg)
+            try:
+                self.twilio_client.sms.messages.create(
+                    to=recipient,
+                    from_=cfg.TWILIO_PHONE_NUMBER,
+                    body=truncate(msg, 140))
+            except TwilioRestException as ex:
+                self.logger.error("Unable to send SMS: %s", ex)
+            except httplib2.ServerNotFoundError as ex:
+                self.logger.error("Unable to send SMS - internet connectivity issues: %s", ex)
+            except:
+                self.logger.error("Exception sending SMS: %s", sys.exc_info()[0])
 
 ##############################################################################
 # Twitter support
 ##############################################################################
 
-twitter_api = None
+class Twitter(object):
+    """Class to connect to and send DMs/update status on Twitter"""
 
-def twitter_init():
-    """Initialize Twitter API object.
+    def __init__(self):
+        self.twitter_api = None
+        self.logger = logging.getLogger(__name__)
 
-    Args:
-        None
-    """
+    def connect(self):
+        """Initialize Twitter API object.
 
-    global twitter_api
+        Args:
+            None
+        """
 
-    # User may not have configured twitter - don't initialize it until it's
-    # first used
-    if twitter_api == None:
-        status("Initializing Twitter")
+        # User may not have configured twitter - don't initialize it until it's
+        # first used
+        if self.twitter_api == None:
+            self.logger.info("Initializing Twitter")
 
-        if cfg.TWITTER_CONSUMER_KEY == '' or cfg.TWITTER_CONSUMER_SECRET == '':
-            status("Twitter consumer key/secret not specified - unable to Tweet!")
-        elif cfg.TWITTER_ACCESS_KEY == '' or cfg.TWITTER_ACCESS_SECRET == '':
-            status("Twitter access key/secret not specified - unable to Tweet!")
-        else:
-            auth = tweepy.OAuthHandler(cfg.TWITTER_CONSUMER_KEY, cfg.TWITTER_CONSUMER_SECRET)
-            auth.set_access_token(cfg.TWITTER_ACCESS_KEY, cfg.TWITTER_ACCESS_SECRET)
-            twitter_api = tweepy.API(auth)
+            if cfg.TWITTER_CONSUMER_KEY == '' or cfg.TWITTER_CONSUMER_SECRET == '':
+                self.logger.error("Twitter consumer key/secret not specified - unable to Tweet!")
+            elif cfg.TWITTER_ACCESS_KEY == '' or cfg.TWITTER_ACCESS_SECRET == '':
+                self.logger.error("Twitter access key/secret not specified - unable to Tweet!")
+            else:
+                auth = tweepy.OAuthHandler(cfg.TWITTER_CONSUMER_KEY, cfg.TWITTER_CONSUMER_SECRET)
+                auth.set_access_token(cfg.TWITTER_ACCESS_KEY, cfg.TWITTER_ACCESS_SECRET)
+                self.twitter_api = tweepy.API(auth)
 
-def twitter_dm(user, msg):
-    """Send direct message to specified Twitter user.
+    def direct_msg(self, user, msg):
+        """Send direct message to specified Twitter user.
 
-    Args:
-        user: User to send DM to.
-        msg: Message to send. Long messages will automatically be truncated.
-    """
-    global twitter_api
+        Args:
+            user: User to send DM to.
+            msg: Message to send. Long messages will automatically be truncated.
+        """
 
-    twitter_init()
+        self.connect()
 
-    if twitter_api != None:
-        # Twitter doesn't like the same msg sent over and over, so add a timestamp
-        msg = strftime("%Y-%m-%d %H:%M:%S: ") + msg
+        if self.twitter_api != None:
+            # Twitter doesn't like the same msg sent over and over, so add a timestamp
+            msg = strftime("%Y-%m-%d %H:%M:%S: ") + msg
 
-        status("Sending twitter DM to %s: %s" % (user, msg))
-        try:
-            twitter_api.send_direct_message(user=user, text=truncate(msg, 140))
-        except tweepy.error.TweepError as ex:
-            status("Unable to send Tweet: %s" % (ex))
+            self.logger.info("Sending twitter DM to %s: %s", user, msg)
+            try:
+                self.twitter_api.send_direct_message(user=user, text=truncate(msg, 140))
+            except tweepy.error.TweepError as ex:
+                self.logger.error("Unable to send Tweet: %s", ex)
 
-def twitter_status(msg):
-    """Update the users's status
+    def update_status(self, msg):
+        """Update the users's status
 
-    Args:
-        msg: New status to set. Long messages will automatically be truncated.
-    """
-    global twitter_api
+        Args:
+            msg: New status to set. Long messages will automatically be truncated.
+        """
 
-    twitter_init()
+        self.connect()
 
-    if twitter_api != None:
-        # Twitter doesn't like the same msg sent over and over, so add a timestamp
-        msg = strftime("%Y-%m-%d %H:%M:%S: ") + msg
+        if self.twitter_api != None:
+            # Twitter doesn't like the same msg sent over and over, so add a timestamp
+            msg = strftime("%Y-%m-%d %H:%M:%S: ") + msg
 
-        status("Updating Twitter status to: %s" % (msg))
-        try:
-            twitter_api.update_status(status=truncate(msg, 140))
-        except tweepy.error.TweepError as ex:
-            status("Unable to update Twitter status: %s" % (ex))
+            self.logger.info("Updating Twitter status to: %s", msg)
+            try:
+                self.twitter_api.update_status(status=truncate(msg, 140))
+            except tweepy.error.TweepError as ex:
+                self.logger.error("Unable to update Twitter status: %s", ex)
 
 ##############################################################################
 # Email support
 ##############################################################################
 
-def send_email(recipient, subject, msg):
-    """Sends an email to the specified email address.
+class Email(object):
+    """Class to send emails"""
 
-    Args:
-        recipient: Email address to send to.
-        subject: Email subject.
-        msg: Body of email to send.
-    """
-    status("Sending email to %s: subject = \"%s\", message = \"%s\"" % (recipient, subject, msg))
+    def __init__(self):
+        self.logger = logging.getLogger(__name__)
 
-    msg = MIMEText(msg)
-    msg['Subject'] = subject
-    msg['To'] = recipient
-    msg['From'] = cfg.EMAIL_FROM
+    def send_email(self, recipient, subject, msg):
+        """Sends an email to the specified email address.
 
-    try:
-        mail = smtplib.SMTP(cfg.SMTP_SERVER, cfg.SMTP_PORT)
-        mail.sendmail(cfg.EMAIL_FROM, recipient, msg.as_string())
-        mail.quit()
-    except:
-        status("Exception sending email: %s" % sys.exc_info()[0])
+        Args:
+            recipient: Email address to send to.
+            subject: Email subject.
+            msg: Body of email to send.
+        """
+        self.logger.info("Sending email to %s: subject = \"%s\", message = \"%s\"", recipient, subject, msg)
+
+        msg = MIMEText(msg)
+        msg['Subject'] = subject
+        msg['To'] = recipient
+        msg['From'] = cfg.EMAIL_FROM
+
+        try:
+            mail = smtplib.SMTP(cfg.SMTP_SERVER, cfg.SMTP_PORT)
+            mail.sendmail(cfg.EMAIL_FROM, recipient, msg.as_string())
+            mail.quit()
+        except:
+            self.logger.error("Exception sending email: %s", sys.exc_info()[0])
 
 ##############################################################################
 # Sensor support
@@ -247,26 +259,8 @@ def rpi_status():
 ##############################################################################
 # Logging and alerts
 ##############################################################################
-log_file_handle = None
 
-def status(msg):
-    """Log status message to LOG_FILENAME.
-
-    Args:
-        msg: message to log.
-    """
-    global log_file_handle
-
-    line = strftime("%Y-%m-%d %H:%M:%S: ") + msg
-    print(line)
-
-    if log_file_handle == None:
-        log_file_handle = open(cfg.LOG_FILENAME, 'a')
-
-    log_file_handle.write(line + "\n")
-    log_file_handle.flush()
-
-def send_alerts(recipients, subject, msg):
+def send_alerts(logger, alert_senders, recipients, subject, msg):
     """Send subject and msg to specified recipients
 
     Args:
@@ -276,15 +270,15 @@ def send_alerts(recipients, subject, msg):
     """
     for recipient in recipients:
         if recipient[:6] == 'email:':
-            send_email(recipient[6:], subject, msg)
+            alert_senders['Email'].send_email(recipient[6:], subject, msg)
         elif recipient[:11] == 'twitter_dm:':
-            twitter_dm(recipient[11:], msg)
+            alert_senders['Twitter'].direct_msg(recipient[11:], msg)
         elif recipient == 'tweet':
-            twitter_status(msg)
+            alert_senders['Twitter'].update_status(msg)
         elif recipient[:4] == 'sms:':
-            twilio_send_sms(recipient[4:], msg)
+            alert_senders['Twilio'].send_sms(recipient[4:], msg)
         else:
-            status("Unrecognized recipient type: %s" % (recipient))
+            logger.error("Unrecognized recipient type: %s", recipient)
 
 ##############################################################################
 # Misc support
@@ -305,101 +299,126 @@ def truncate(input_str, length):
 ##############################################################################
 # Main functionality
 ##############################################################################
-def main():
-    """Main functionality
-    """
+class PiGarageAlert(object):
+    """Class with main function of Pi Garage Alert"""
 
-    # Banner
-    status("==========================================================")
-    status("Pi Garage Alert starting")
+    def __init__(self):
+        self.logger = logging.getLogger(__name__)
 
-    # Use Raspberry Pi board pin numbers
-    status("Configuring global settings")
-    GPIO.setmode(GPIO.BOARD)
+    def main(self):
+        """Main functionality
+        """
 
-    # Configure the sensor pins as inputs with pull up resistors
-    for door in cfg.GARAGE_DOORS:
-        status("Configuring pin %d for \"%s\"" % (door['pin'], door['name']))
-        GPIO.setup(door['pin'], GPIO.IN, pull_up_down=GPIO.PUD_UP)
+        # Set up logging
+        log_fmt = '%(asctime)-15s %(levelname)-8s %(message)s'
+        log_level = logging.INFO
 
-    # Last state of each garage door
-    door_states = dict()
+        if sys.stdout.isatty():
+            # Connected to a real terminal - log to stdout
+            logging.basicConfig(format=log_fmt, level=log_level)
+        else:
+            # Background mode - log to file
+            logging.basicConfig(format=log_fmt, level=log_level, filename=cfg.LOG_FILENAME)
 
-    # time.time() of the last time the garage door changed state
-    time_of_last_state_change = dict()
+        # Banner
+        self.logger.info("==========================================================")
+        self.logger.info("Pi Garage Alert starting")
 
-    # Index of the next alert to send for each garage door
-    alert_states = dict()
+        # Use Raspberry Pi board pin numbers
+        self.logger.info("Configuring global settings")
+        GPIO.setmode(GPIO.BOARD)
 
-    # Read initial states
-    for door in cfg.GARAGE_DOORS:
-        name = door['name']
-        state = get_garage_door_state(door['pin'])
+        # Create alert sending objects
+        alert_senders = {
+            "Twitter": Twitter(),
+            "Twilio": Twilio(),
+            "Email": Email()
+        }
 
-        door_states[name] = state
-        time_of_last_state_change[name] = time.time()
-        alert_states[name] = 0
+        # Configure the sensor pins as inputs with pull up resistors
+        for door in cfg.GARAGE_DOORS:
+            self.logger.info("Configuring pin %d for \"%s\"", door['pin'], door['name'])
+            GPIO.setup(door['pin'], GPIO.IN, pull_up_down=GPIO.PUD_UP)
 
-        status("Initial state of \"%s\" is %s" % (name, state))
+        # Last state of each garage door
+        door_states = dict()
 
-    status_report_countdown = 5
-    while True:
+        # time.time() of the last time the garage door changed state
+        time_of_last_state_change = dict()
+
+        # Index of the next alert to send for each garage door
+        alert_states = dict()
+
+        # Read initial states
         for door in cfg.GARAGE_DOORS:
             name = door['name']
             state = get_garage_door_state(door['pin'])
-            time_in_state = time.time() - time_of_last_state_change[name]
 
-            # Check if the door has changed state
-            if door_states[name] != state:
-                door_states[name] = state
-                time_of_last_state_change[name] = time.time()
-                status("State of \"%s\" changed to %s after %.0f sec" % (name, state, time_in_state))
+            door_states[name] = state
+            time_of_last_state_change[name] = time.time()
+            alert_states[name] = 0
 
-                # Reset alert when door changes state
-                if alert_states[name] > 0:
-                    # Use the recipients of the last alert
-                    recipients = door['alerts'][alert_states[name] - 1]['recipients']
-                    send_alerts(recipients, name, "%s is now %s" % (name, state))
-                    alert_states[name] = 0
+            self.logger.info("Initial state of \"%s\" is %s", name, state)
 
-                # Reset time_in_state
-                time_in_state = 0
+        status_report_countdown = 5
+        while True:
+            for door in cfg.GARAGE_DOORS:
+                name = door['name']
+                state = get_garage_door_state(door['pin'])
+                time_in_state = time.time() - time_of_last_state_change[name]
 
-            # See if there are more alerts
-            if len(door['alerts']) > alert_states[name]:
-                # Get info about alert
-                alert = door['alerts'][alert_states[name]]
+                # Check if the door has changed state
+                if door_states[name] != state:
+                    door_states[name] = state
+                    time_of_last_state_change[name] = time.time()
+                    self.logger.info("State of \"%s\" changed to %s after %.0f sec", name, state, time_in_state)
 
-                # Has the time elapsed and is this the state to trigger the alert?
-                if time_in_state > alert['time'] and state == alert['state']:
-                    send_alerts(alert['recipients'], name, "%s has been %s for %d seconds!" % (name, state, time_in_state))
-                    alert_states[name] += 1
+                    # Reset alert when door changes state
+                    if alert_states[name] > 0:
+                        # Use the recipients of the last alert
+                        recipients = door['alerts'][alert_states[name] - 1]['recipients']
+                        send_alerts(self.logger, alert_senders, recipients, name, "%s is now %s" % (name, state))
+                        alert_states[name] = 0
 
-        # Periodically log the status for debug and ensuring RPi doesn't get too hot
-        status_report_countdown -= 1
-        if status_report_countdown <= 0:
-            status_msg = rpi_status()
+                    # Reset time_in_state
+                    time_in_state = 0
 
-            for name in door_states:
-                status_msg += ", %s: %s/%d/%d" % (name, door_states[name], alert_states[name], (time.time() - time_of_last_state_change[name]))
+                # See if there are more alerts
+                if len(door['alerts']) > alert_states[name]:
+                    # Get info about alert
+                    alert = door['alerts'][alert_states[name]]
 
-            status(status_msg)
+                    # Has the time elapsed and is this the state to trigger the alert?
+                    if time_in_state > alert['time'] and state == alert['state']:
+                        send_alerts(self.logger, alert_senders, alert['recipients'], name, "%s has been %s for %d seconds!" % (name, state, time_in_state))
+                        alert_states[name] += 1
 
-            status_report_countdown = 600
+            # Periodically log the status for debug and ensuring RPi doesn't get too hot
+            status_report_countdown -= 1
+            if status_report_countdown <= 0:
+                status_msg = rpi_status()
 
-        # Poll every 1 second
-        time.sleep(1)
+                for name in door_states:
+                    status_msg += ", %s: %s/%d/%d" % (name, door_states[name], alert_states[name], (time.time() - time_of_last_state_change[name]))
 
-    # Will never actually get here unless while(1) condition changed
-    GPIO.cleanup()
+                self.logger.info(status_msg)
+
+                status_report_countdown = 600
+
+            # Poll every 1 second
+            time.sleep(1)
+
+        # Will never actually get here unless while(1) condition changed
+        GPIO.cleanup()
 
 if __name__ == "__main__":
     # Ensure GPIO.cleanup() is called on ctrl-c termination
     try:
-        main()
+        PiGarageAlert().main()
     except KeyboardInterrupt:
+        logging.critical("Terminating due to keyboard interrupt")
         GPIO.cleanup()
     except:
-        status("Terminating due to unexpected error: %s" % sys.exc_info()[0])
+        logging.critical("Terminating due to unexpected error: %s", sys.exc_info()[0])
         GPIO.cleanup()
         raise
