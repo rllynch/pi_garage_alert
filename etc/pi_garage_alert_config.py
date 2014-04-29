@@ -69,10 +69,29 @@ TWITTER_ACCESS_SECRET = ''
 ##############################################################################
 
 # Sign up for a Twilio account at https://www.twilio.com/
-# then these will be listed at the top of your Twilio dashboard 
+# then these will be listed at the top of your Twilio dashboard
 
 TWILIO_ACCOUNT = ''
 TWILIO_TOKEN = ''
 
 # SMS will be sent from this phone number
 TWILIO_PHONE_NUMBER = '+11234567890'
+
+##############################################################################
+# Jabber settings
+##############################################################################
+
+# Jabber ID and password that status updates will be sent from
+# Leave this blank to disable Jabber support
+
+JABBER_ID = ''
+JABBER_PASSWORD = ''
+
+# Uncomment to override the default server specified in DNS SRV records
+
+#JABBER_SERVER = 'talk.google.com'
+#JABBER_PORT = 5222
+
+# List of Jabber IDs allowed to perform queries
+
+JABBER_AUTHORIZED_IDS = []
