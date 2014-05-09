@@ -109,6 +109,7 @@ class Jabber(sleekxmpp.ClientXMPP):
         # self.ssl_version = ssl.PROTOCOL_SSLv3
 
         # Connect to the XMPP server and start processing XMPP stanzas.
+        # This will block if the network is down.
 
         if hasattr(cfg, 'JABBER_SERVER') and hasattr(cfg, 'JABBER_PORT'):
             # Config file overrode the default server and port
@@ -171,8 +172,9 @@ class Jabber(sleekxmpp.ClientXMPP):
         """
         self.logger.info("Jabber from %s (%s): %s", msg['from'].bare, msg['type'], msg['body'])
 
-        # Only handle one-to-one conversations
-        if msg['type'] in ('chat', 'normal'):
+        # Only handle one-to-one conversations, and only if authorized
+        # users have been defined
+        if msg['type'] in ('chat', 'normal') and hasattr(cfg, 'JABBER_AUTHORIZED_IDS'):
             # Check if user is authorized
             if msg['from'].bare in cfg.JABBER_AUTHORIZED_IDS:
                 if msg['body'].lower() == 'status':
