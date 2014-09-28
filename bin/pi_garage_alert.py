@@ -53,7 +53,7 @@ from email.mime.text import MIMEText
 from time import strftime
 from datetime import timedelta
 from twilio.rest import TwilioRestClient
-from twilio import TwilioRestException
+from twilio.rest.exceptions import TwilioRestException
 
 sys.path.append('/usr/local/etc')
 import pi_garage_alert_config as cfg
