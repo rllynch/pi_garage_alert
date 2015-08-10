@@ -461,8 +461,8 @@ def send_alerts(logger, alert_senders, recipients, subject, msg):
             alert_senders['Twilio'].send_sms(recipient[4:], msg)
         elif recipient[:7] == 'jabber:':
             alert_senders['Jabber'].send_msg(recipient[7:], msg)
-        elif recipient[:12] == 'pushbullet:':
-            alert_senders['Pushbullet'].send_note(recipient[12:], subject, msg)
+        elif recipient[:11] == 'pushbullet:':
+            alert_senders['Pushbullet'].send_note(recipient[11:], subject, msg)
         else:
             logger.error("Unrecognized recipient type: %s", recipient)
 
