@@ -41,6 +41,7 @@ import subprocess
 import re
 import sys
 import requests
+import json
 import tweepy
 import logging
 import smtplib
@@ -350,6 +351,7 @@ class Email(object):
 
         try:
             mail = smtplib.SMTP(cfg.SMTP_SERVER, cfg.SMTP_PORT)
+            mail.login(cfg.SMTP_USER, cfg.SMTP_PASS)
             mail.sendmail(cfg.EMAIL_FROM, recipient, msg.as_string())
             mail.quit()
         except:
@@ -375,11 +377,14 @@ class Pushbullet(object):
         """
         self.logger.info("Sending Pushbullet note to %s: title = \"%s\", body = \"%s\"", access_token, title, body)
 
-        headers = { 'Authorization':'Bearer ' + access_token,'Content-type':'application/json' }
+        headers = { 'Content-type':'application/json' }
         payload = { 'type':'note','title':title,'body':body }
 
         try:
-            requests.post("https://api.pushbullet.com/v2/pushes", data=payload, headers=headers)
+            session = requests.Session()
+            session.auth = (access_token, "")
+            session.headers.update(headers)
+            session.post("https://api.pushbullet.com/v2/pushes", data=json.dumps(payload))
         except:
             self.logger.error("Exception sending note: %s", sys.exc_info()[0])
 
