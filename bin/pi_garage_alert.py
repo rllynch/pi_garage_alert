@@ -351,7 +351,8 @@ class Email(object):
 
         try:
             mail = smtplib.SMTP(cfg.SMTP_SERVER, cfg.SMTP_PORT)
-            mail.login(cfg.SMTP_USER, cfg.SMTP_PASS)
+            if cfg.SMTP_USER != '' and cfg.SMTP_PASS != '':
+                mail.login(cfg.SMTP_USER, cfg.SMTP_PASS)
             mail.sendmail(cfg.EMAIL_FROM, recipient, msg.as_string())
             mail.quit()
         except:
