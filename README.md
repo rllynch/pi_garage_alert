@@ -24,10 +24,12 @@ Here is a heavily condensed quick start guide. New users are strongly encouraged
 1. Edit /etc/wpa_supplicant/wpa_supplicant.conf and configure the RPi to connect to your wifi network.
 1. Regenerate the ssh keys for security.
 1. Update the packages with `sudo apt-get update && sudo apt-get upgrade`, then install the dependencies:<br>
-sudo apt-get install python-setuptools<br>
+sudo apt-get install python-setuptools python-dev libffi-dev<br>
 sudo easy_install pip<br>
 sudo pip install tweepy<br>
 sudo pip install twilio<br>
+sudo pip install requests<br>
+sudo pip install requests[security]<br>
 1. Optional email configuration
 	1. Configure postfix to send mail using Google SMTP, or your ISP's SMTP server
 1. Optional twitter configuration

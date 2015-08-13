@@ -40,6 +40,8 @@ import time
 import subprocess
 import re
 import sys
+import requests
+import json
 import tweepy
 import logging
 import smtplib
@@ -349,10 +351,43 @@ class Email(object):
 
         try:
             mail = smtplib.SMTP(cfg.SMTP_SERVER, cfg.SMTP_PORT)
+            if cfg.SMTP_USER != '' and cfg.SMTP_PASS != '':
+                mail.login(cfg.SMTP_USER, cfg.SMTP_PASS)
             mail.sendmail(cfg.EMAIL_FROM, recipient, msg.as_string())
             mail.quit()
         except:
             self.logger.error("Exception sending email: %s", sys.exc_info()[0])
+            
+##############################################################################
+# Pushbullet support
+##############################################################################
+
+class Pushbullet(object):
+    """Class to send Pushbullet notes"""
+
+    def __init__(self):
+        self.logger = logging.getLogger(__name__)
+
+    def send_note(self, access_token, title, body):
+        """Sends a note to the specified access token.
+
+        Args:
+            access_token: Access token of the Pushbullet account to send to.
+            title: Note title
+            body: Body of the note to send
+        """
+        self.logger.info("Sending Pushbullet note to %s: title = \"%s\", body = \"%s\"", access_token, title, body)
+
+        headers = { 'Content-type':'application/json' }
+        payload = { 'type':'note','title':title,'body':body }
+
+        try:
+            session = requests.Session()
+            session.auth = (access_token, "")
+            session.headers.update(headers)
+            session.post("https://api.pushbullet.com/v2/pushes", data=json.dumps(payload))
+        except:
+            self.logger.error("Exception sending note: %s", sys.exc_info()[0])
 
 ##############################################################################
 # Sensor support
@@ -432,6 +467,8 @@ def send_alerts(logger, alert_senders, recipients, subject, msg):
             alert_senders['Twilio'].send_sms(recipient[4:], msg)
         elif recipient[:7] == 'jabber:':
             alert_senders['Jabber'].send_msg(recipient[7:], msg)
+        elif recipient[:11] == 'pushbullet:':
+            alert_senders['Pushbullet'].send_note(recipient[11:], subject, msg)
         else:
             logger.error("Unrecognized recipient type: %s", recipient)
 
@@ -531,7 +568,8 @@ class PiGarageAlert(object):
                 "Jabber": Jabber(door_states, time_of_last_state_change),
                 "Twitter": Twitter(),
                 "Twilio": Twilio(),
-                "Email": Email()
+                "Email": Email(),
+                "Pushbullet": Pushbullet()
             }
 
             # Read initial states
