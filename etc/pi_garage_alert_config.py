@@ -50,8 +50,8 @@ LOG_FILENAME = "/var/log/pi_garage_alert.log"
 
 SMTP_SERVER = 'localhost'
 SMTP_PORT = 25
-SMTP_USER = 'smtp_login_username'
-SMTP_PASS = 'smtp_login_password'
+SMTP_USER = ''
+SMTP_PASS = ''
 EMAIL_FROM = 'Garage Door <user@example.com>'
 
 ##############################################################################
