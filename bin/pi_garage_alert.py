@@ -410,7 +410,9 @@ class GoogleCloudMessaging(object):
 
         auth_header = "key=" + cfg.GCM_KEY
         headers = { 'Content-type':'application/json' }
-        payload = { 'to':cfg.GCM_TOPIC,'data':{'message':body,'status':state} }
+        
+        status = 1 if state == 'open' else 0
+        payload = { 'to':cfg.GCM_TOPIC,'data':{'message':body,'status':status} }
 
         try:
             session = requests.Session()
