@@ -406,12 +406,12 @@ class GoogleCloudMessaging(object):
             state: Garage door state as string ("0"|"1")
             body: Body of the note to send
         """
-        self.logger.info("Sending GCM push to %s: state = \"%s\", body = \"%s\"", cfg.GCM_TOPIC, state, body)
+        status = "1" if state == 'open' else "0"
+        
+        self.logger.info("Sending GCM push to %s: status = \"%s\", body = \"%s\"", cfg.GCM_TOPIC, status, body)
 
         auth_header = "key=" + cfg.GCM_KEY
         headers = { 'Content-type':'application/json' }
-        
-        status = "1" if state == 'open' else "0"
         payload = { 'to':cfg.GCM_TOPIC,'data':{'message':body,'status':status} }
 
         try:
