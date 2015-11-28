@@ -390,6 +390,37 @@ class Pushbullet(object):
             self.logger.error("Exception sending note: %s", sys.exc_info()[0])
 
 ##############################################################################
+# Google Cloud Messaging support
+##############################################################################
+
+class GoogleCloudMessaging(object):
+    """Class to send GCM notifications"""
+
+    def __init__(self):
+        self.logger = logging.getLogger(__name__)
+
+    def send_push(self, status, body):
+        """Sends a push notification to the specified topic.
+
+        Args:
+            status: Garage door status as string ("0"|"1")
+            body: Body of the note to send
+        """
+        self.logger.info("Sending GCM push to %s: status = \"%s\", body = \"%s\"", cfg.GCM_TOPIC, status, body)
+
+        auth_header = "key=" + cfg.GCM_KEY
+        headers = { 'Content-type':'application/json' }
+        payload = { 'to':cfg.GCM_TOPIC,'data':{'message':body,'status':status} }
+
+        try:
+            session = requests.Session()
+            session.auth = (auth_header, "")
+            session.headers.update(headers)
+            session.post("https://gcm-http.googleapis.com/gcm/send", data=json.dumps(payload))
+        except:
+            self.logger.error("Exception sending push: %s", sys.exc_info()[0])
+
+##############################################################################
 # Sensor support
 ##############################################################################
 
@@ -469,6 +500,8 @@ def send_alerts(logger, alert_senders, recipients, subject, msg):
             alert_senders['Jabber'].send_msg(recipient[7:], msg)
         elif recipient[:11] == 'pushbullet:':
             alert_senders['Pushbullet'].send_note(recipient[11:], subject, msg)
+        elif recipient[:4] == 'gcm:':
+            alert_senders['Gcm'].send_push(status, msg)
         else:
             logger.error("Unrecognized recipient type: %s", recipient)
 
@@ -569,7 +602,8 @@ class PiGarageAlert(object):
                 "Twitter": Twitter(),
                 "Twilio": Twilio(),
                 "Email": Email(),
-                "Pushbullet": Pushbullet()
+                "Pushbullet": Pushbullet(),
+                "Gcm": GoogleCloudMessaging()
             }
 
             # Read initial states
