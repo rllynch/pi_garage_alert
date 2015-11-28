@@ -411,12 +411,11 @@ class GoogleCloudMessaging(object):
         self.logger.info("Sending GCM push to %s: status = \"%s\", body = \"%s\"", cfg.GCM_TOPIC, status, body)
 
         auth_header = "key=" + cfg.GCM_KEY
-        headers = { 'Content-type':'application/json' }
+        headers = { 'Content-type':'application/json','Authorization':auth_header }
         payload = { 'to':cfg.GCM_TOPIC,'data':{'message':body,'status':status} }
 
         try:
             session = requests.Session()
-            session.auth = (auth_header, "")
             session.headers.update(headers)
             session.post("https://gcm-http.googleapis.com/gcm/send", data=json.dumps(payload))
         except:
