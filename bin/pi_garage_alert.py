@@ -399,18 +399,18 @@ class GoogleCloudMessaging(object):
     def __init__(self):
         self.logger = logging.getLogger(__name__)
 
-    def send_push(self, status, body):
+    def send_push(self, state, body):
         """Sends a push notification to the specified topic.
 
         Args:
-            status: Garage door status as string ("0"|"1")
+            state: Garage door state as string ("0"|"1")
             body: Body of the note to send
         """
-        self.logger.info("Sending GCM push to %s: status = \"%s\", body = \"%s\"", cfg.GCM_TOPIC, status, body)
+        self.logger.info("Sending GCM push to %s: state = \"%s\", body = \"%s\"", cfg.GCM_TOPIC, state, body)
 
         auth_header = "key=" + cfg.GCM_KEY
         headers = { 'Content-type':'application/json' }
-        payload = { 'to':cfg.GCM_TOPIC,'data':{'message':body,'status':status} }
+        payload = { 'to':cfg.GCM_TOPIC,'data':{'message':body,'status':state} }
 
         try:
             session = requests.Session()
@@ -479,13 +479,14 @@ def rpi_status():
 # Logging and alerts
 ##############################################################################
 
-def send_alerts(logger, alert_senders, recipients, subject, msg):
+def send_alerts(logger, alert_senders, recipients, subject, msg, state):
     """Send subject and msg to specified recipients
 
     Args:
         recipients: An array of strings of the form type:address
         subject: Subject of the alert
         msg: Body of the alert
+        state: The state of the door
     """
     for recipient in recipients:
         if recipient[:6] == 'email:':
@@ -501,7 +502,7 @@ def send_alerts(logger, alert_senders, recipients, subject, msg):
         elif recipient[:11] == 'pushbullet:':
             alert_senders['Pushbullet'].send_note(recipient[11:], subject, msg)
         elif recipient == 'gcm':
-            alert_senders['Gcm'].send_push(status, msg)
+            alert_senders['Gcm'].send_push(state, msg)
         else:
             logger.error("Unrecognized recipient type: %s", recipient)
 
@@ -634,7 +635,7 @@ class PiGarageAlert(object):
                         if alert_states[name] > 0:
                             # Use the recipients of the last alert
                             recipients = door['alerts'][alert_states[name] - 1]['recipients']
-                            send_alerts(self.logger, alert_senders, recipients, name, "%s is now %s" % (name, state))
+                            send_alerts(self.logger, alert_senders, recipients, name, "%s is now %s" % (name, state), state)
                             alert_states[name] = 0
 
                         # Reset time_in_state
@@ -647,7 +648,7 @@ class PiGarageAlert(object):
 
                         # Has the time elapsed and is this the state to trigger the alert?
                         if time_in_state > alert['time'] and state == alert['state']:
-                            send_alerts(self.logger, alert_senders, alert['recipients'], name, "%s has been %s for %d seconds!" % (name, state, time_in_state))
+                            send_alerts(self.logger, alert_senders, alert['recipients'], name, "%s has been %s for %d seconds!" % (name, state, time_in_state), state)
                             alert_states[name] += 1
 
                 # Periodically log the status for debug and ensuring RPi doesn't get too hot
