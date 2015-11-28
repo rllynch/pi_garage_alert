@@ -500,7 +500,7 @@ def send_alerts(logger, alert_senders, recipients, subject, msg):
             alert_senders['Jabber'].send_msg(recipient[7:], msg)
         elif recipient[:11] == 'pushbullet:':
             alert_senders['Pushbullet'].send_note(recipient[11:], subject, msg)
-        elif recipient[:4] == 'gcm:':
+        elif recipient == 'gcm':
             alert_senders['Gcm'].send_push(status, msg)
         else:
             logger.error("Unrecognized recipient type: %s", recipient)
