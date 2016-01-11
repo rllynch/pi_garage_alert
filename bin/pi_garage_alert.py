@@ -35,25 +35,25 @@ Learn more at http://www.richlynch.com/code/pi_garage_alert
 #
 ##############################################################################
 
-import RPi.GPIO as GPIO
 import time
+from time import strftime
 import subprocess
 import re
 import sys
-import requests
 import json
-import tweepy
 import logging
+from datetime import timedelta
 import smtplib
-import httplib2
-import sleekxmpp
-from sleekxmpp.xmlstream import resolver, cert
 import ssl
 import traceback
 from email.mime.text import MIMEText
 
-from time import strftime
-from datetime import timedelta
+import requests
+import tweepy
+import RPi.GPIO as GPIO
+import httplib2
+import sleekxmpp
+from sleekxmpp.xmlstream import resolver, cert
 from twilio.rest import TwilioRestClient
 from twilio.rest.exceptions import TwilioRestException
 
@@ -115,7 +115,7 @@ class Jabber(sleekxmpp.ClientXMPP):
 
         if hasattr(cfg, 'JABBER_SERVER') and hasattr(cfg, 'JABBER_PORT'):
             # Config file overrode the default server and port
-            if not self.connect((cfg.JABBER_SERVER, cfg.JABBER_PORT)):
+            if not self.connect((cfg.JABBER_SERVER, cfg.JABBER_PORT)): # pylint: disable=no-member
                 return
         else:
             # Use default server and port from DNS SRV records
@@ -231,7 +231,7 @@ class Twilio(object):
 
         # User may not have configured twilio - don't initialize it until it's
         # first used
-        if self.twilio_client == None:
+        if self.twilio_client is None:
             self.logger.info("Initializing Twilio")
 
             if cfg.TWILIO_ACCOUNT == '' or cfg.TWILIO_TOKEN == '':
@@ -273,7 +273,7 @@ class Twitter(object):
 
         # User may not have configured twitter - don't initialize it until it's
         # first used
-        if self.twitter_api == None:
+        if self.twitter_api is None:
             self.logger.info("Initializing Twitter")
 
             if cfg.TWITTER_CONSUMER_KEY == '' or cfg.TWITTER_CONSUMER_SECRET == '':
@@ -357,7 +357,7 @@ class Email(object):
             mail.quit()
         except:
             self.logger.error("Exception sending email: %s", sys.exc_info()[0])
-            
+
 ##############################################################################
 # Pushbullet support
 ##############################################################################
@@ -378,8 +378,8 @@ class Pushbullet(object):
         """
         self.logger.info("Sending Pushbullet note to %s: title = \"%s\", body = \"%s\"", access_token, title, body)
 
-        headers = { 'Content-type':'application/json' }
-        payload = { 'type':'note','title':title,'body':body }
+        headers = {'Content-type': 'application/json'}
+        payload = {'type': 'note', 'title': title, 'body': body}
 
         try:
             session = requests.Session()
@@ -407,12 +407,12 @@ class GoogleCloudMessaging(object):
             body: Body of the note to send
         """
         status = "1" if state == 'open' else "0"
-        
+
         self.logger.info("Sending GCM push to %s: status = \"%s\", body = \"%s\"", cfg.GCM_TOPIC, status, body)
 
         auth_header = "key=" + cfg.GCM_KEY
-        headers = { 'Content-type':'application/json','Authorization':auth_header }
-        payload = { 'to':cfg.GCM_TOPIC,'data':{'message':body,'status':status} }
+        headers = {'Content-type': 'application/json', 'Authorization': auth_header}
+        payload = {'to': cfg.GCM_TOPIC, 'data': {'message': body, 'status': status}}
 
         try:
             session = requests.Session()
@@ -431,7 +431,7 @@ def get_garage_door_state(pin):
     Args:
         pin: GPIO pin number.
     """
-    if GPIO.input(pin):
+    if GPIO.input(pin): # pylint: disable=no-member
         state = 'open'
     else:
         state = 'closed'
@@ -672,7 +672,7 @@ class PiGarageAlert(object):
             logging.critical("Terminating due to unexpected error: %s", sys.exc_info()[0])
             logging.critical("%s", traceback.format_exc())
 
-        GPIO.cleanup()
+        GPIO.cleanup() # pylint: disable=no-member
         alert_senders['Jabber'].terminate()
 
 if __name__ == "__main__":
