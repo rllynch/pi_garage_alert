@@ -390,6 +390,38 @@ class Pushbullet(object):
             self.logger.error("Exception sending note: %s", sys.exc_info()[0])
 
 ##############################################################################
+# Google Cloud Messaging support
+##############################################################################
+
+class GoogleCloudMessaging(object):
+    """Class to send GCM notifications"""
+
+    def __init__(self):
+        self.logger = logging.getLogger(__name__)
+
+    def send_push(self, state, body):
+        """Sends a push notification to the specified topic.
+
+        Args:
+            state: Garage door state as string ("0"|"1")
+            body: Body of the note to send
+        """
+        status = "1" if state == 'open' else "0"
+        
+        self.logger.info("Sending GCM push to %s: status = \"%s\", body = \"%s\"", cfg.GCM_TOPIC, status, body)
+
+        auth_header = "key=" + cfg.GCM_KEY
+        headers = { 'Content-type':'application/json','Authorization':auth_header }
+        payload = { 'to':cfg.GCM_TOPIC,'data':{'message':body,'status':status} }
+
+        try:
+            session = requests.Session()
+            session.headers.update(headers)
+            session.post("https://gcm-http.googleapis.com/gcm/send", data=json.dumps(payload))
+        except:
+            self.logger.error("Exception sending push: %s", sys.exc_info()[0])
+
+##############################################################################
 # Sensor support
 ##############################################################################
 
@@ -448,13 +480,14 @@ def rpi_status():
 # Logging and alerts
 ##############################################################################
 
-def send_alerts(logger, alert_senders, recipients, subject, msg):
+def send_alerts(logger, alert_senders, recipients, subject, msg, state):
     """Send subject and msg to specified recipients
 
     Args:
         recipients: An array of strings of the form type:address
         subject: Subject of the alert
         msg: Body of the alert
+        state: The state of the door
     """
     for recipient in recipients:
         if recipient[:6] == 'email:':
@@ -469,6 +502,8 @@ def send_alerts(logger, alert_senders, recipients, subject, msg):
             alert_senders['Jabber'].send_msg(recipient[7:], msg)
         elif recipient[:11] == 'pushbullet:':
             alert_senders['Pushbullet'].send_note(recipient[11:], subject, msg)
+        elif recipient == 'gcm':
+            alert_senders['Gcm'].send_push(state, msg)
         else:
             logger.error("Unrecognized recipient type: %s", recipient)
 
@@ -569,7 +604,8 @@ class PiGarageAlert(object):
                 "Twitter": Twitter(),
                 "Twilio": Twilio(),
                 "Email": Email(),
-                "Pushbullet": Pushbullet()
+                "Pushbullet": Pushbullet(),
+                "Gcm": GoogleCloudMessaging()
             }
 
             # Read initial states
@@ -600,7 +636,7 @@ class PiGarageAlert(object):
                         if alert_states[name] > 0:
                             # Use the recipients of the last alert
                             recipients = door['alerts'][alert_states[name] - 1]['recipients']
-                            send_alerts(self.logger, alert_senders, recipients, name, "%s is now %s" % (name, state))
+                            send_alerts(self.logger, alert_senders, recipients, name, "%s is now %s" % (name, state), state)
                             alert_states[name] = 0
 
                         # Reset time_in_state
@@ -613,7 +649,7 @@ class PiGarageAlert(object):
 
                         # Has the time elapsed and is this the state to trigger the alert?
                         if time_in_state > alert['time'] and state == alert['state']:
-                            send_alerts(self.logger, alert_senders, alert['recipients'], name, "%s has been %s for %d seconds!" % (name, state, time_in_state))
+                            send_alerts(self.logger, alert_senders, alert['recipients'], name, "%s has been %s for %d seconds!" % (name, state, time_in_state), state)
                             alert_states[name] += 1
 
                 # Periodically log the status for debug and ensuring RPi doesn't get too hot
