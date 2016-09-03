@@ -348,6 +348,7 @@ class Email(object):
         msg['Subject'] = subject
         msg['To'] = recipient
         msg['From'] = cfg.EMAIL_FROM
+        msg['X-Priority'] = cfg.EMAIL_PRIORITY
 
         try:
             mail = smtplib.SMTP(cfg.SMTP_SERVER, cfg.SMTP_PORT)
