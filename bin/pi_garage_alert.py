@@ -61,6 +61,74 @@ sys.path.append('/usr/local/etc')
 import pi_garage_alert_config as cfg
 
 ##############################################################################
+# Cisco Spark support
+##############################################################################
+class CiscoSpark(object):
+    """Class to send Cisco Spark messages"""
+
+    def __init__(self):
+        self.logger = logging.getLogger(__name__)
+        self.header = None
+        self.rooms = {"items": []}
+        self.room_id = None
+
+    def headers(self):
+        access_token_hdr = 'Bearer ' + cfg.SPARK_ACCESSTOKEN
+        spark_header = {'Authorization': access_token_hdr, 'Content-Type': 'application/json; charset=utf-8'}
+        return spark_header
+
+    def get_rooms(self):
+        uri = 'https://api.ciscospark.com/v1/rooms'
+        resp = requests.get(uri, headers=self.headers)
+        return resp.json()
+
+    def find_room(self, name):
+        room_id = 0
+        for room in self.rooms["items"]:
+            if room["title"] == name:
+                room_id = room["id"]
+                break
+        return room_id
+
+    def add_room(self, name):
+        uri = 'https://api.ciscospark.com/v1/rooms'
+        payload = {"title": name}
+        resp = requests.post(uri, data=json.dumps(payload), headers=self.headers)
+        return resp.json()
+
+    def add_message_to_room(self, message):
+        self.logger.info("In the Spark addMessageToRoom function. Adding to room ID " + self.room_id)
+        uri = "https://api.ciscospark.com/v1/messages"
+        payload = {"roomId": self.room_id, "text": message}
+        resp = requests.post(uri, data=json.dumps(payload), headers=self.headers)
+        return resp.json()
+
+    def send_sparkmsg(self, room_name, message):
+        """Sends a note to the specified Spark Room
+
+        Args:
+            roomName: Name of the Cisco Spark Room to send to.
+            message: body of the message
+        """
+        self.logger.info("Sending Cisco Spark message to %s: message = \"%s\"", room_name, message)
+
+        if cfg.SPARK_ACCESSTOKEN == '':
+            self.logger.error("Cisco Spark access token not specified - unable to send Spark message!")
+
+        self.logger.info("In the Spark block")
+        self.header = self.headers()
+        self.rooms = self.get_rooms()
+        self.room_id = self.find_room(room_name)
+        if self.room_id != 0:
+            self.add_message_to_room(message)
+        else:
+            self.logger.info("Specified room %s was not found! Creating.", room_name)
+            self.add_room(room_name)
+            self.rooms = self.get_rooms()
+            self.room_id = self.find_room(room_name)
+            self.add_message_to_room(message)
+
+##############################################################################
 # Jabber support
 ##############################################################################
 
@@ -503,6 +571,8 @@ def send_alerts(logger, alert_senders, recipients, subject, msg, state):
             alert_senders['Jabber'].send_msg(recipient[7:], msg)
         elif recipient[:11] == 'pushbullet:':
             alert_senders['Pushbullet'].send_note(recipient[11:], subject, msg)
+        elif recipient[:6] == 'spark:':
+            alert_senders['CiscoSpark'].send_sparkmsg(recipient[6:], msg)
         elif recipient == 'gcm':
             alert_senders['Gcm'].send_push(state, msg)
         else:
@@ -606,6 +676,7 @@ class PiGarageAlert(object):
                 "Twilio": Twilio(),
                 "Email": Email(),
                 "Pushbullet": Pushbullet(),
+                "CiscoSpark": CiscoSpark(),
                 "Gcm": GoogleCloudMessaging()
             }
 

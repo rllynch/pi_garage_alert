@@ -57,6 +57,15 @@ EMAIL_PRIORITY = '1'
 # 1 High, 3 Normal, 5 Low
 
 ##############################################################################
+# Cisco Spark settings
+##############################################################################
+
+# Obtain your access token from https://developer.ciscospark.com, click
+# on your avatar at the top right corner.
+
+SPARK_ACCESSTOKEN = "" #put your access token here between the quotes.
+
+##############################################################################
 # Twitter settings
 ##############################################################################
 
