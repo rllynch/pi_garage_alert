@@ -459,6 +459,34 @@ class Pushbullet(object):
             self.logger.error("Exception sending note: %s", sys.exc_info()[0])
 
 ##############################################################################
+# IFTTT support using Maker Channel (https://ifttt.com/maker)
+##############################################################################
+
+class IFTTT(object):
+    """Class to send IFTTT triggers using the Maker Channel"""
+
+    def __init__(self):
+        self.logger = logging.getLogger(__name__)
+
+    def send_trigger(self, event, value1, value2, value3):
+        """Send an IFTTT event using the maker channel.
+
+        Get the key by following the URL at https://ifttt.com/services/maker/settings
+
+        Args:
+            event: Event name
+            value1, value2, value3: Optional data to supply to IFTTT.
+        """
+        self.logger.info("Sending IFTTT event \"%s\": value1 = \"%s\", value2 = \"%s\", value3 = \"%s\"", event, value1, value2, value3)
+
+        headers = {'Content-type': 'application/json'}
+        payload = {'value1': value1, 'value2': value2, 'value3': value3}
+        try:
+            requests.post("https://maker.ifttt.com/trigger/%s/with/key/%s" % (event, cfg.IFTTT_KEY), headers=headers, data=json.dumps(payload))
+        except:
+            self.logger.error("Exception sending IFTTT event: %s", sys.exc_info()[0])
+
+##############################################################################
 # Google Cloud Messaging support
 ##############################################################################
 
@@ -549,7 +577,7 @@ def rpi_status():
 # Logging and alerts
 ##############################################################################
 
-def send_alerts(logger, alert_senders, recipients, subject, msg, state):
+def send_alerts(logger, alert_senders, recipients, subject, msg, state, time_in_state):
     """Send subject and msg to specified recipients
 
     Args:
@@ -571,6 +599,8 @@ def send_alerts(logger, alert_senders, recipients, subject, msg, state):
             alert_senders['Jabber'].send_msg(recipient[7:], msg)
         elif recipient[:11] == 'pushbullet:':
             alert_senders['Pushbullet'].send_note(recipient[11:], subject, msg)
+        elif recipient[:6] == 'ifttt:':
+            alert_senders['IFTTT'].send_trigger(recipient[6:], subject, state, '%d' % (time_in_state))
         elif recipient[:6] == 'spark:':
             alert_senders['CiscoSpark'].send_sparkmsg(recipient[6:], msg)
         elif recipient == 'gcm':
@@ -676,6 +706,7 @@ class PiGarageAlert(object):
                 "Twilio": Twilio(),
                 "Email": Email(),
                 "Pushbullet": Pushbullet(),
+                "IFTTT": IFTTT(),
                 "CiscoSpark": CiscoSpark(),
                 "Gcm": GoogleCloudMessaging()
             }
@@ -708,7 +739,7 @@ class PiGarageAlert(object):
                         if alert_states[name] > 0:
                             # Use the recipients of the last alert
                             recipients = door['alerts'][alert_states[name] - 1]['recipients']
-                            send_alerts(self.logger, alert_senders, recipients, name, "%s is now %s" % (name, state), state)
+                            send_alerts(self.logger, alert_senders, recipients, name, "%s is now %s" % (name, state), state, 0)
                             alert_states[name] = 0
 
                         # Reset time_in_state
@@ -721,7 +752,7 @@ class PiGarageAlert(object):
 
                         # Has the time elapsed and is this the state to trigger the alert?
                         if time_in_state > alert['time'] and state == alert['state']:
-                            send_alerts(self.logger, alert_senders, alert['recipients'], name, "%s has been %s for %d seconds!" % (name, state, time_in_state), state)
+                            send_alerts(self.logger, alert_senders, alert['recipients'], name, "%s has been %s for %d seconds!" % (name, state, time_in_state), state, time_in_state)
                             alert_states[name] += 1
 
                 # Periodically log the status for debug and ensuring RPi doesn't get too hot

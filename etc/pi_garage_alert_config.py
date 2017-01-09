@@ -30,12 +30,12 @@ GARAGE_DOORS = [
 #            {
 #                'state': 'open',
 #                'time': 120,
-#                'recipients': [ 'sms:+11112223333', 'email:someone@example.com', 'twitter_dm:twitter_user', 'pushbullet:access_token', 'gcm', 'tweet' ]
+#                'recipients': [ 'sms:+11112223333', 'email:someone@example.com', 'twitter_dm:twitter_user', 'pushbullet:access_token', 'gcm', 'tweet', 'ifttt:garage_door' ]
 #            },
 #            {
 #                'state': 'open',
 #                'time': 600,
-#                'recipients': [ 'sms:+11112223333', 'email:someone@example.com', 'twitter_dm:twitter_user', 'pushbullet:access_token', 'gcm', 'tweet' ]
+#                'recipients': [ 'sms:+11112223333', 'email:someone@example.com', 'twitter_dm:twitter_user', 'pushbullet:access_token', 'gcm', 'tweet', 'ifttt:garage_door' ]
 #            }
         ]
     }
@@ -115,3 +115,16 @@ JABBER_AUTHORIZED_IDS = []
 
 GCM_KEY = ''
 GCM_TOPIC = ''
+
+##############################################################################
+# IFTTT Maker Channel settings
+# Create an applet using the "Maker" channel, pick a event name,
+# and use the event name as a recipient of one of the alerts,
+# e.g. 'recipients': [ 'ifft:garage_event' ]
+#
+# Get the key by going to https://ifttt.com/services/maker/settings.
+# The key is the part of the URL after https://maker.ifttt.com/use/.
+# Do not include https://maker.ifttt.com/use/ in IFTTT_KEY.
+##############################################################################
+
+IFTTT_KEY = ''
