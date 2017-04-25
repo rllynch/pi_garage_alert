@@ -128,3 +128,16 @@ GCM_TOPIC = ''
 ##############################################################################
 
 IFTTT_KEY = ''
+
+##############################################################################
+# Slack settings
+# Send messages to a team slack channel
+# e.g. 'recipients': [ 'slack:<your channel ID>']
+#   where <your channel ID> is the name or ID of the slack channel you want to
+#   send to
+#
+# To use this functionality you will need to create a bot user to do the posting
+# For information on how to create the bot user and get your API token go to:
+#   https://api.slack.com/bot-users
+##############################################################################
+SLACK_BOT_TOKEN = ''
