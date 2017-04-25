@@ -12,7 +12,7 @@ Here is a heavily condensed quick start guide. New users are strongly encouraged
 
 1. Equipment required
   1. Raspberry Pi model A or B
-	1. 2GB or larger SD card for the RPi filesystem 
+	1. 2GB or larger SD card for the RPi filesystem
 	1. Magnetic sensor (e.g. http://www.smarthome.com/7455/Seco-Larm-SM-226L-Garage-Door-Contacts-for-Closed-Circuits/p.aspx)
 	1. USB wifi adapter (if not using Ethernet)
 	1. USB power supply for RPi
@@ -31,6 +31,7 @@ sudo pip install tweepy<br>
 sudo pip install twilio<br>
 sudo pip install requests<br>
 sudo pip install requests[security]<br>
+sudo pip install slackclient<br>
 1. Optional email configuration
 	1. Configure postfix to send mail using Google SMTP, or your ISP's SMTP server
 1. Optional twitter configuration
