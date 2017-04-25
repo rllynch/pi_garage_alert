@@ -139,5 +139,8 @@ IFTTT_KEY = ''
 # To use this functionality you will need to create a bot user to do the posting
 # For information on how to create the bot user and get your API token go to:
 #   https://api.slack.com/bot-users
+#
+# Note that the bot user must be added to the channel you want to post
+# notifications in
 ##############################################################################
 SLACK_BOT_TOKEN = ''
