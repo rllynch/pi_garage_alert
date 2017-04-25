@@ -56,6 +56,7 @@ import sleekxmpp
 from sleekxmpp.xmlstream import resolver, cert
 from twilio.rest import TwilioRestClient
 from twilio.rest.exceptions import TwilioRestException
+from slackclient import SlackClient
 
 sys.path.append('/usr/local/etc')
 import pi_garage_alert_config as cfg
@@ -519,6 +520,37 @@ class GoogleCloudMessaging(object):
             self.logger.error("Exception sending push: %s", sys.exc_info()[0])
 
 ##############################################################################
+# Slack support
+##############################################################################
+class Slack(object):
+    """ Class to send a slack message to the configured channel using
+    the configured BOT
+        Requires a Slack API token
+
+        Requires installation of the python slack client
+            > Install via pip using:
+                pip install slackclient
+            > Or see github page for details:
+                http://slackapi.github.io/python-slackclient/
+    """
+
+    def __init__(self):
+        self.slack_client = SlackClient(cfg.SLACK_BOT_TOKEN)
+        self.logger = logging.getLogger(__name__)
+
+    def send_message(self, channel, state, body):
+        """
+            Args:
+            channel: Channel ID to send to
+            state: Garage door state as string
+            body: Body of the note to send
+        """
+        self.logger.info("Sending Slack Message: state = \"%s\", body = \"%s\"", state, body)
+        api_call = self.slack_client.api_call("chat.postMessage", channel=channel, text=body, as_user=True)
+        if not api_call.get('ok'):
+            self.logger.info(api_call.get('error'))
+
+##############################################################################
 # Sensor support
 ##############################################################################
 
@@ -605,6 +637,8 @@ def send_alerts(logger, alert_senders, recipients, subject, msg, state, time_in_
             alert_senders['CiscoSpark'].send_sparkmsg(recipient[6:], msg)
         elif recipient == 'gcm':
             alert_senders['Gcm'].send_push(state, msg)
+        elif recipient[:6] == 'slack:':
+            alert_senders['Slack'].send_message(recipient[6:], state, msg)
         else:
             logger.error("Unrecognized recipient type: %s", recipient)
 
@@ -708,7 +742,8 @@ class PiGarageAlert(object):
                 "Pushbullet": Pushbullet(),
                 "IFTTT": IFTTT(),
                 "CiscoSpark": CiscoSpark(),
-                "Gcm": GoogleCloudMessaging()
+                "Gcm": GoogleCloudMessaging(),
+                "Slack": Slack()
             }
 
             # Read initial states
