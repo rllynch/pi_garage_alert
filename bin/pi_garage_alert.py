@@ -535,7 +535,10 @@ class Slack(object):
     """
 
     def __init__(self):
-        self.slack_client = SlackClient(cfg.SLACK_BOT_TOKEN)
+        if cfg.SLACK_BOT_TOKEN:
+            self.slack_client = SlackClient(cfg.SLACK_BOT_TOKEN)
+        else:
+            self.slack_client = None
         self.logger = logging.getLogger(__name__)
 
     def send_message(self, channel, state, body):
@@ -545,10 +548,13 @@ class Slack(object):
             state: Garage door state as string
             body: Body of the note to send
         """
-        self.logger.info("Sending Slack Message: state = \"%s\", body = \"%s\"", state, body)
-        api_call = self.slack_client.api_call("chat.postMessage", channel=channel, text=body, as_user=True)
-        if not api_call.get('ok'):
-            self.logger.info(api_call.get('error'))
+        if self.slack_client:
+            self.logger.info("Sending Slack Message: state = \"%s\", body = \"%s\"", state, body)
+            api_call = self.slack_client.api_call("chat.postMessage", channel=channel, text=body, as_user=True)
+            if not api_call.get('ok'):
+                self.logger.error(api_call.get('error'))
+        else:
+            self.logger.error('Slack bot token not configured - unable to send message to Slack channel')
 
 ##############################################################################
 # Sensor support
