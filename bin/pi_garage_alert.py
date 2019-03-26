@@ -691,6 +691,12 @@ def format_duration(duration_sec):
 
     return ret
 
+def persist_door_state(name, state):
+    """If configured, save the current door state to a file"""
+    if cfg.DOOR_STATE_FILENAME:
+        with open(cfg.DOOR_STATE_FILENAME, "w") as state_file:
+            state_file.write("%s|%s" % (name, state.upper()))
+
 
 ##############################################################################
 # Main functionality
@@ -775,6 +781,9 @@ class PiGarageAlert(object):
                         door_states[name] = state
                         time_of_last_state_change[name] = time.time()
                         self.logger.info("State of \"%s\" changed to %s after %.0f sec", name, state, time_in_state)
+
+                        # Write the door state to a file, if configured
+                        persist_door_state(name, state)
 
                         # Reset alert when door changes state
                         if alert_states[name] > 0:
