@@ -1,4 +1,4 @@
-#!/usr/bin/python2.7
+#!/usr/bin/python3
 """ Pi Garage Alert
 
 Author: Richard L. Lynch <rich@richlynch.com>
@@ -51,12 +51,11 @@ from email.mime.text import MIMEText
 import requests
 import tweepy
 import RPi.GPIO as GPIO
-import httplib2
 import sleekxmpp
 from sleekxmpp.xmlstream import resolver, cert
 from twilio.rest import TwilioRestClient
-from twilio.rest.exceptions import TwilioRestException
-from slackclient import SlackClient
+from twilio.base.exceptions import TwilioRestException
+import slack
 
 sys.path.append('/usr/local/etc')
 import pi_garage_alert_config as cfg
@@ -64,7 +63,7 @@ import pi_garage_alert_config as cfg
 ##############################################################################
 # Cisco Spark support
 ##############################################################################
-class CiscoSpark(object):
+class CiscoSpark:
     """Class to send Cisco Spark messages"""
 
     def __init__(self):
@@ -98,7 +97,7 @@ class CiscoSpark(object):
         return resp.json()
 
     def add_message_to_room(self, message):
-        self.logger.info("In the Spark addMessageToRoom function. Adding to room ID " + self.room_id)
+        self.logger.info("In the Spark addMessageToRoom function. Adding to room ID %s", str(self.room_id))
         uri = "https://api.ciscospark.com/v1/messages"
         payload = {"roomId": self.room_id, "text": message}
         resp = requests.post(uri, data=json.dumps(payload), headers=self.headers)
@@ -132,12 +131,6 @@ class CiscoSpark(object):
 ##############################################################################
 # Jabber support
 ##############################################################################
-
-# SleekXMPP requires UTF-8
-if sys.version_info < (3, 0):
-    # pylint: disable=no-member
-    reload(sys)
-    sys.setdefaultencoding('utf8')
 
 class Jabber(sleekxmpp.ClientXMPP):
     """Interfaces with a Jabber instant messaging service"""
@@ -283,7 +276,7 @@ class Jabber(sleekxmpp.ClientXMPP):
 # Twilio support
 ##############################################################################
 
-class Twilio(object):
+class Twilio:
     """Class to connect to and send SMS using Twilio"""
 
     def __init__(self):
@@ -308,7 +301,7 @@ class Twilio(object):
             else:
                 self.twilio_client = TwilioRestClient(cfg.TWILIO_ACCOUNT, cfg.TWILIO_TOKEN)
 
-        if self.twilio_client != None:
+        if self.twilio_client is not None:
             self.logger.info("Sending SMS to %s: %s", recipient, msg)
             try:
                 self.twilio_client.sms.messages.create(
@@ -317,8 +310,6 @@ class Twilio(object):
                     body=truncate(msg, 140))
             except TwilioRestException as ex:
                 self.logger.error("Unable to send SMS: %s", ex)
-            except httplib2.ServerNotFoundError as ex:
-                self.logger.error("Unable to send SMS - internet connectivity issues: %s", ex)
             except:
                 self.logger.error("Exception sending SMS: %s", sys.exc_info()[0])
 
@@ -326,7 +317,7 @@ class Twilio(object):
 # Twitter support
 ##############################################################################
 
-class Twitter(object):
+class Twitter:
     """Class to connect to and send DMs/update status on Twitter"""
 
     def __init__(self):
@@ -364,13 +355,13 @@ class Twitter(object):
 
         self.connect()
 
-        if self.twitter_api != None:
+        if self.twitter_api is not None:
             # Twitter doesn't like the same msg sent over and over, so add a timestamp
             msg = strftime("%Y-%m-%d %H:%M:%S: ") + msg
 
             self.logger.info("Sending twitter DM to %s: %s", user, msg)
             try:
-                self.twitter_api.send_direct_message(user=user, text=truncate(msg, 140))
+                self.twitter_api.send_direct_message(recipient_id=user, text=truncate(msg, 140))
             except tweepy.error.TweepError as ex:
                 self.logger.error("Unable to send Tweet: %s", ex)
 
@@ -383,7 +374,7 @@ class Twitter(object):
 
         self.connect()
 
-        if self.twitter_api != None:
+        if self.twitter_api is not None:
             # Twitter doesn't like the same msg sent over and over, so add a timestamp
             msg = strftime("%Y-%m-%d %H:%M:%S: ") + msg
 
@@ -397,7 +388,7 @@ class Twitter(object):
 # Email support
 ##############################################################################
 
-class Email(object):
+class Email:
     """Class to send emails"""
 
     def __init__(self):
@@ -432,7 +423,7 @@ class Email(object):
 # Pushbullet support
 ##############################################################################
 
-class Pushbullet(object):
+class Pushbullet:
     """Class to send Pushbullet notes"""
 
     def __init__(self):
@@ -463,7 +454,7 @@ class Pushbullet(object):
 # IFTTT support using Maker Channel (https://ifttt.com/maker)
 ##############################################################################
 
-class IFTTT(object):
+class IFTTT:
     """Class to send IFTTT triggers using the Maker Channel"""
 
     def __init__(self):
@@ -491,7 +482,7 @@ class IFTTT(object):
 # Google Cloud Messaging support
 ##############################################################################
 
-class GoogleCloudMessaging(object):
+class GoogleCloudMessaging:
     """Class to send GCM notifications"""
 
     def __init__(self):
@@ -522,7 +513,7 @@ class GoogleCloudMessaging(object):
 ##############################################################################
 # Slack support
 ##############################################################################
-class Slack(object):
+class Slack:
     """ Class to send a slack message to the configured channel using
     the configured BOT
         Requires a Slack API token
@@ -536,7 +527,7 @@ class Slack(object):
 
     def __init__(self):
         if cfg.SLACK_BOT_TOKEN:
-            self.slack_client = SlackClient(cfg.SLACK_BOT_TOKEN)
+            self.slack_client = slack.WebClient(cfg.SLACK_BOT_TOKEN)
         else:
             self.slack_client = None
         self.logger = logging.getLogger(__name__)
@@ -550,9 +541,10 @@ class Slack(object):
         """
         if self.slack_client:
             self.logger.info("Sending Slack Message: state = \"%s\", body = \"%s\"", state, body)
-            api_call = self.slack_client.api_call("chat.postMessage", channel=channel, text=body, as_user=True)
-            if not api_call.get('ok'):
-                self.logger.error(api_call.get('error'))
+            try:
+                self.slack_client.api_call("chat.postMessage", json={'channel': channel, 'text': body})
+            except:
+                self.logger.error("Exception sending slack message: %s", sys.exc_info()[0])
         else:
             self.logger.error('Slack bot token not configured - unable to send message to Slack channel')
 
@@ -586,7 +578,7 @@ def get_gpu_temp():
     """
     cmd = ['vcgencmd', 'measure_temp']
 
-    measure_temp_proc = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+    measure_temp_proc = subprocess.Popen(cmd, stdout=subprocess.PIPE, universal_newlines=True)
     output = measure_temp_proc.communicate()[0]
 
     gpu_temp = 'unknown'
@@ -695,7 +687,7 @@ def format_duration(duration_sec):
 ##############################################################################
 # Main functionality
 ##############################################################################
-class PiGarageAlert(object):
+class PiGarageAlert:
     """Class with main function of Pi Garage Alert"""
 
     def __init__(self):
