@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 """ Pi Garage Alert
 
 Author: Richard L. Lynch <rich@richlynch.com>
