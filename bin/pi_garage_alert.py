@@ -53,7 +53,7 @@ import tweepy
 import RPi.GPIO as GPIO
 import sleekxmpp
 from sleekxmpp.xmlstream import resolver, cert
-from twilio.rest import TwilioRestClient
+from twilio.rest import Client
 from twilio.base.exceptions import TwilioRestException
 import slack
 
@@ -299,19 +299,19 @@ class Twilio:
             if cfg.TWILIO_ACCOUNT == '' or cfg.TWILIO_TOKEN == '':
                 self.logger.error("Twilio account or token not specified - unable to send SMS!")
             else:
-                self.twilio_client = TwilioRestClient(cfg.TWILIO_ACCOUNT, cfg.TWILIO_TOKEN)
+                self.twilio_client = Client(cfg.TWILIO_ACCOUNT, cfg.TWILIO_TOKEN)
 
         if self.twilio_client is not None:
             self.logger.info("Sending SMS to %s: %s", recipient, msg)
             try:
-                self.twilio_client.sms.messages.create(
+                self.twilio_client.messages.create(
                     to=recipient,
                     from_=cfg.TWILIO_PHONE_NUMBER,
                     body=truncate(msg, 140))
             except TwilioRestException as ex:
                 self.logger.error("Unable to send SMS: %s", ex)
-            except:
-                self.logger.error("Exception sending SMS: %s", sys.exc_info()[0])
+            except Exception as ex:
+                self.logger.error("Exception sending SMS: %s %s", ex, sys.exc_info()[0])
 
 ##############################################################################
 # Twitter support
