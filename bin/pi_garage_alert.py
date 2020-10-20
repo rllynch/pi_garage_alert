@@ -56,6 +56,7 @@ from sleekxmpp.xmlstream import resolver, cert
 from twilio.rest import Client
 from twilio.base.exceptions import TwilioRestException
 import slack
+import pyhue
 
 sys.path.append('/usr/local/etc')
 import pi_garage_alert_config as cfg
@@ -385,6 +386,86 @@ class Twitter:
                 self.logger.error("Unable to update Twitter status: %s", ex)
 
 ##############################################################################
+# Philips Hue support
+##############################################################################
+
+class Hue(object):
+    """Class to interact with Philips Hue lights"""
+
+    def __init__(self):
+        self.hue_bridge = None
+        self.hue_status = None
+        self.hue_hue = None
+        self.hue_sat = None
+        self.hue_bri = None
+        self.hue_sent = False
+        self.logger = logging.getLogger(__name__)
+
+    def send_hue(self, recipient, state, light_state):
+        """Sends a hue event to the specified light.
+
+        Args:
+            state: New status to set.
+        """
+
+        if self.hue_bridge is None:
+            self.logger.info("Initializing Hue")
+
+            if cfg.HUE_BRIDGE_ADDRESS == '' or cfg.HUE_USER_ID == '':
+                self.logger.error("Hue Bridge Address or User ID not specified - unable to send Hue command!")
+            else:
+                self.hue_bridge = pyhue.Bridge(cfg.HUE_BRIDGE_ADDRESS, cfg.HUE_USER_ID)
+
+        if self.hue_bridge != None:
+            self.logger.info("Sending %s message to %s", state, recipient)
+
+            try:
+                self.hue_sent = False
+                if light_state == "on":
+                    for group in self.hue_bridge.groups:
+                        if group.name == recipient:
+                            if group.on == False:
+                                group.on = True
+                            self.logger.info("Message sent to turn %s group %s", light_state, recipient)
+                            self.hue_sent = True
+                    if self.hue_sent == False:
+                     for light in self.hue_bridge.lights:
+                            if light.name == recipient:
+                                if recipient == cfg.HUE_LIGHT_NAME:
+                                    self.hue_status = light.on
+                                    self.hue_hue = light.hue
+                                    self.hue_sat = light.sat
+                                    self.hue_bri = light.bri
+                                if light.on == False:
+                                    light.on = True
+                                if recipient == cfg.HUE_LIGHT_NAME:
+                                    light.hue = cfg.HUE_LIGHT_HUE
+                                    light.sat = cfg.HUE_LIGHT_SAT
+                                    light.bri = cfg.HUE_LIGHT_BRI
+                                self.logger.info("Message sent to turn %s light %s", light_state, recipient)
+                if light_state == "off":
+                    for group in self.hue_bridge.groups:
+                        if group.name == recipient:
+                            if group.on == True:
+                                group.on = False
+                            self.logger.info("Message sent to turn %s group %s", light_state, recipient)
+                            self.hue_sent = True
+                    if self.hue_sent == False:
+                        for light in self.hue_bridge.lights:
+                            if light.name == recipient:
+                                if light.on == True:
+                                    if recipient == cfg.HUE_LIGHT_NAME and self.hue_hue != None and self.hue_sat != None and self.hue_bri != None and self.hue_status != None:
+                                        light.hue = self.hue_hue
+                                        light.sat = self.hue_sat
+                                        light.bri = self.hue_bri
+                                        light.on = self.hue_status
+                                    else:
+                                        light.on = False
+                                self.logger.info("Message sent to turn %s light %s", light_state, recipient)
+            except:
+                self.logger.error("Exception sending Hue event: %s", sys.exc_info()[0])
+
+##############################################################################
 # Email support
 ##############################################################################
 
@@ -619,6 +700,17 @@ def send_alerts(logger, alert_senders, recipients, subject, msg, state, time_in_
     for recipient in recipients:
         if recipient[:6] == 'email:':
             alert_senders['Email'].send_email(recipient[6:], subject, msg)
+        elif recipient[:4] == 'hue_':
+            substring = "is now"
+            if substring in msg:
+                logger.info("Skipping Hue reset")
+            else:
+                if recipient[4:6] == 'on':
+                    alert_senders['Hue'].send_hue(recipient[7:], state, 'on')
+                elif recipient[4:7] == 'off':
+                    alert_senders['Hue'].send_hue(recipient[8:], state, 'off')
+                else:
+                    logger.info("Recipient is %s", recipient[4:])
         elif recipient[:11] == 'twitter_dm:':
             alert_senders['Twitter'].direct_msg(recipient[11:], msg)
         elif recipient == 'tweet':
@@ -736,6 +828,7 @@ class PiGarageAlert:
                 "Jabber": Jabber(door_states, time_of_last_state_change),
                 "Twitter": Twitter(),
                 "Twilio": Twilio(),
+                "Hue": Hue(),
                 "Email": Email(),
                 "Pushbullet": Pushbullet(),
                 "IFTTT": IFTTT(),
