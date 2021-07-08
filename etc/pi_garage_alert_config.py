@@ -41,6 +41,16 @@ GARAGE_DOORS = [
     }
 ]
 
+# A valid file-path here will enable writing the door state(s) into it.
+# This can be read, for example, by other app/services running on the same pi
+# The contents will look something like:
+'''
+Garage Door 1|OPEN
+Example Garage Door|CLOSED
+'''
+# To use, set value to something like "/usr/local/etc/pi_garage_alert_door_state"
+DOOR_STATE_FILENAME = ""
+
 # All messages will be logged to stdout and this file
 LOG_FILENAME = "/var/log/pi_garage_alert.log"
 
