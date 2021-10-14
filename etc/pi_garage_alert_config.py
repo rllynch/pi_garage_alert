@@ -144,3 +144,29 @@ IFTTT_KEY = ''
 # notifications in
 ##############################################################################
 SLACK_BOT_TOKEN = ''
+
+##############################################################################
+# Hue settings
+# Control a Philips Hue light for alerts and activating lights
+# e.g. 'recipients': [ 'hue_on:<your light>' ] or [ 'hue_off:<your light>' ]
+# where <your light> is the name of an individual light or group of lights such
+# as a room that you wish to turn on using hue_on or turn off using hue_off
+# 
+# HUE_BRIDGE_ADDRESS is the IP of your Hue Bridge
+# HUE_USER_ID is the ID assigned to you by the Hue Bridge. See developers.meethue.com
+# for further details on how to obtain this.
+# HUE_LIGHT_NAME is the name of an individual light or group as configured in
+# Philips Hue that you want to use for the alert
+# HUE_LIGHT_HUE is the value of the colour hue setting you want for the alert,
+# with valid values from 0 to 65535
+# HUE_LIGHT_SAT is the value of the saturation you want for the alert, with valid
+# values from 0 to 254
+# HUE_LIGHT_BRI is the value of the brightness you want for the alert, with valid
+# values from 0 to 254
+##############################################################################
+HUE_BRIDGE_ADDRESS = '192.168.0.27'
+HUE_USER_ID = ''
+HUE_LIGHT_NAME = 'Front foyer'
+HUE_LIGHT_HUE = 65524
+HUE_LIGHT_SAT = 254
+HUE_LIGHT_BRI = 254
